@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       code_server_version:
-        description: Use "latest", "keep", or a concrete version like 4.103.2.
+        description: Use "latest", "auto", "keep", or a concrete version like 4.103.2.
         required: true
-        default: latest
+        default: auto
         type: string
       jupyter_version:
         description: Optional Jupyter Notebook version override.
@@ -43,6 +43,21 @@ on:
         required: false
         default: ""
         type: string
+      vllm_version:
+        description: Optional vLLM version override.
+        required: false
+        default: ""
+        type: string
+      xformers_version:
+        description: Optional xFormers version override.
+        required: false
+        default: ""
+        type: string
+      deepspeed_version:
+        description: Optional DeepSpeed version override.
+        required: false
+        default: ""
+        type: string
   schedule:
     - cron: "7 2 * * 1"
 
@@ -73,8 +88,20 @@ jobs:
           INPUT_PYTORCH_VERSION: ${{ inputs.pytorch_version }}
           INPUT_TORCHAUDIO_VERSION: ${{ inputs.torchaudio_version }}
           INPUT_TORCHVISION_VERSION: ${{ inputs.torchvision_version }}
+          INPUT_VLLM_VERSION: ${{ inputs.vllm_version }}
+          INPUT_XFORMERS_VERSION: ${{ inputs.xformers_version }}
+          INPUT_DEEPSPEED_VERSION: ${{ inputs.deepspeed_version }}
         run: |
           set -euo pipefail
+
+          code_server_version="${INPUT_CODE_SERVER_VERSION:-auto}"
+          if [ "${GITHUB_EVENT_NAME}" = "schedule" ] || [ "${code_server_version}" = "auto" ]; then
+            python3 scripts/update-kubeflow-versions.py \
+              --file "${VERSION_FILE}" \
+              --write-llm-matrix versions/code-server-llm-matrix.json \
+              --llm-matrix-per-cuda 1
+            exit 0
+          fi
 
           update_var() {
             var_name="$1"
@@ -84,8 +111,7 @@ jobs:
             fi
           }
 
-          code_server_version="${INPUT_CODE_SERVER_VERSION:-latest}"
-          if [ "${GITHUB_EVENT_NAME}" = "schedule" ] || [ "${code_server_version}" = "latest" ]; then
+          if [ "${code_server_version}" = "latest" ]; then
             latest_tag="$(curl -fsSL https://api.github.com/repos/coder/code-server/releases/latest | jq -r '.tag_name')"
             code_server_version="${latest_tag#v}"
           fi
@@ -101,6 +127,9 @@ jobs:
           update_var PYTORCH_VERSION "${INPUT_PYTORCH_VERSION:-}"
           update_var TORCHAUDIO_VERSION "${INPUT_TORCHAUDIO_VERSION:-}"
           update_var TORCHVISION_VERSION "${INPUT_TORCHVISION_VERSION:-}"
+          update_var VLLM_VERSION "${INPUT_VLLM_VERSION:-}"
+          update_var XFORMERS_VERSION "${INPUT_XFORMERS_VERSION:-}"
+          update_var DEEPSPEED_VERSION "${INPUT_DEEPSPEED_VERSION:-}"
 
           cat "${VERSION_FILE}"
 

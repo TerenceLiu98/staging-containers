@@ -15,6 +15,7 @@ Local build example:
 
 ```bash
 make -C kubeflow build-code-server
+make -C kubeflow build-code-server-llm
 make -C kubeflow build-jupyter-cuda-pytorch
 ```
 
@@ -22,7 +23,8 @@ Override a version locally:
 
 ```bash
 make -C kubeflow build-code-server CODESERVER_VERSION=4.103.2
-make -C kubeflow build-jupyter-cuda-pytorch CUDA_VERSION=12.4 PYTORCH_VERSION=2.5.1
+make -C kubeflow build-code-server-llm VLLM_VERSION=0.19.1 XFORMERS_VERSION=0.0.34
+make -C kubeflow build-jupyter-cuda-pytorch CUDA_VERSION=13.0 PYTORCH_VERSION=2.10.0 PYTORCH_CUDA_INDEX=cu130
 ```
 
 GitHub Actions:
@@ -30,14 +32,45 @@ GitHub Actions:
 - `.github/workflows/kubeflow-images.yml` builds on pushes to `kubeflow/**`,
   `versions/kubeflow.env`, and the workflow file.
 - The workflow can be run manually with overrides for code-server, Jupyter,
-  Python, CUDA, PyTorch, torchaudio, and torchvision versions.
+  Python, CUDA, PyTorch, torchaudio, torchvision, vLLM, xFormers, and DeepSpeed
+  versions.
 - Its scheduled run rebuilds the currently pinned versions.
 - Images are pushed to Docker Hub by default as `docker.io/terencelau/kubeflow`.
   Configure repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`.
   To push to a different Docker Hub namespace, run the workflow manually with
   `registry_prefix=docker.io/<namespace>` or change the workflow default.
 - `.github/workflows/update-kubeflow-versions.yml` can update
-  `versions/kubeflow.env` and open a PR. Its scheduled run checks the latest
-  `coder/code-server` release.
+  `versions/kubeflow.env` and open a PR. Its scheduled run uses
+  `scripts/update-kubeflow-versions.py` to resolve the latest compatible
+  code-server, vLLM, PyTorch, CUDA wheel index, xFormers, DeepSpeed, and related
+  Python package versions. It also refreshes
+  `versions/code-server-llm-matrix.json`.
 - CUDA and PyTorch remain explicit pins because those versions must stay
   compatible with each other.
+
+## Kubeflow VS Code Images
+
+The standard `kubeflow/code-server` image is the lightweight VS Code image.
+
+The `kubeflow/code-server-llm` image is the all-in-one LLM development image. It
+does not use conda. Its CUDA base image is pinned by `LLM_BASE_IMAGE` in
+`versions/kubeflow.env`; it uses `uv` and installs a single `/opt/llm` Python
+environment with PyTorch, vLLM, xFormers, DeepSpeed, Transformers, Accelerate,
+PEFT, TRL, bitsandbytes, OpenAI, Anthropic, FastAPI, and Jupyter tooling.
+
+`code-server-llm` is built as a version matrix from
+`versions/code-server-llm-matrix.json`. Each entry is a compatible tuple of CUDA
+wheel index, NVIDIA CUDA base image, PyTorch, vLLM, and xFormers. GitHub Actions
+pushes one tag per tuple, for example:
+
+```text
+docker.io/terencelau/kubeflow:kubeflow-code-server-llm-cuda13.0-torch2.10.0-vllm0.19.1
+docker.io/terencelau/kubeflow:kubeflow-code-server-llm-cuda12.6-torch2.10.0-vllm0.19.1
+docker.io/terencelau/kubeflow:kubeflow-code-server-llm-cuda12.4-torch2.6.0-vllm0.8.5.post1
+```
+
+Only the first matrix entry with `"latest": true` also receives:
+
+```text
+docker.io/terencelau/kubeflow:code-server-llm-latest
+```

@@ -10,6 +10,7 @@ ARG CUDA_VERSION
 ARG PYTORCH_VERSION
 ARG TORCHAUDIO_VERSION
 ARG TORCHVISION_VERSION
+ARG PYTORCH_CUDA_INDEX=cu124
 
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
@@ -46,7 +47,7 @@ RUN mkdir -pv ${CONDA_DIR} \
 
 USER $NB_UID
 
-RUN python3 -m pip install --index-url https://download.pytorch.org/whl/cu124 \
+RUN python3 -m pip install --index-url https://download.pytorch.org/whl/${PYTORCH_CUDA_INDEX} \
     torch==${PYTORCH_VERSION} \
     torchaudio==${TORCHAUDIO_VERSION} \
     torchvision==${TORCHVISION_VERSION}

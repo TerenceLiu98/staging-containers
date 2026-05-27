@@ -14,6 +14,7 @@ on:
           - jupyter
           - jupyter-cuda-pytorch
           - code-server
+          - code-server-llm
       push_images:
         description: Push images to the registry.
         required: true
@@ -74,6 +75,21 @@ on:
         required: false
         default: ""
         type: string
+      vllm_version:
+        description: Override VLLM_VERSION from versions/kubeflow.env.
+        required: false
+        default: ""
+        type: string
+      xformers_version:
+        description: Override XFORMERS_VERSION from versions/kubeflow.env.
+        required: false
+        default: ""
+        type: string
+      deepspeed_version:
+        description: Override DEEPSPEED_VERSION from versions/kubeflow.env.
+        required: false
+        default: ""
+        type: string
   push:
     branches:
       - main
@@ -82,6 +98,7 @@ on:
       - .github/workflows/kubeflow-images.yml
       - kubeflow/**
       - versions/kubeflow.env
+      - versions/code-server-llm-matrix.json
   schedule:
     - cron: "17 3 * * 1"
 
@@ -94,6 +111,7 @@ concurrency:
 
 jobs:
   build:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.image != 'code-server-llm' }}
     runs-on: ubuntu-24.04
     env:
       PROJECT_NAME: kubeflow
@@ -124,6 +142,9 @@ jobs:
           INPUT_PYTORCH_VERSION: ${{ inputs.pytorch_version }}
           INPUT_TORCHAUDIO_VERSION: ${{ inputs.torchaudio_version }}
           INPUT_TORCHVISION_VERSION: ${{ inputs.torchvision_version }}
+          INPUT_VLLM_VERSION: ${{ inputs.vllm_version }}
+          INPUT_XFORMERS_VERSION: ${{ inputs.xformers_version }}
+          INPUT_DEEPSPEED_VERSION: ${{ inputs.deepspeed_version }}
         run: |
           set -euo pipefail
 
@@ -159,6 +180,15 @@ jobs:
           if [ -n "${INPUT_TORCHVISION_VERSION:-}" ]; then
             TORCHVISION_VERSION="${INPUT_TORCHVISION_VERSION}"
           fi
+          if [ -n "${INPUT_VLLM_VERSION:-}" ]; then
+            VLLM_VERSION="${INPUT_VLLM_VERSION}"
+          fi
+          if [ -n "${INPUT_XFORMERS_VERSION:-}" ]; then
+            XFORMERS_VERSION="${INPUT_XFORMERS_VERSION}"
+          fi
+          if [ -n "${INPUT_DEEPSPEED_VERSION:-}" ]; then
+            DEEPSPEED_VERSION="${INPUT_DEEPSPEED_VERSION}"
+          fi
 
           AUTO_LATEST_CODE_SERVER="${INPUT_AUTO_LATEST_CODE_SERVER:-false}"
           if [ "${AUTO_LATEST_CODE_SERVER}" = "true" ]; then
@@ -181,6 +211,7 @@ jobs:
           JUPYTER_BASE_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-jupyter-${JUPYTER_VERSION}"
           JUPYTER_CUDA_PYTORCH_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-jupyter-${JUPYTER_VERSION}-cuda-${CUDA_VERSION}-pytorch-${PYTORCH_VERSION}"
           CODESERVER_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-code-server-${CODESERVER_VERSION}"
+          CODESERVER_LLM_IMAGE_TAG="${PROJECT_NAME}-code-server-llm-cuda-${CUDA_VERSION}-torch-${PYTORCH_VERSION}-vllm-${VLLM_VERSION}"
 
           REGISTRY_HOST="${REGISTRY_PREFIX%%/*}"
           if [[ "${REGISTRY_HOST}" != *.* && "${REGISTRY_HOST}" != *:* && "${REGISTRY_HOST}" != "localhost" ]]; then
@@ -207,10 +238,25 @@ jobs:
             echo "TORCHAUDIO_VERSION=${TORCHAUDIO_VERSION}"
             echo "TORCHVISION_VERSION=${TORCHVISION_VERSION}"
             echo "CODESERVER_VERSION=${CODESERVER_VERSION}"
+            echo "UV_VERSION=${UV_VERSION}"
+            echo "LLM_BASE_IMAGE=${LLM_BASE_IMAGE}"
+            echo "PYTORCH_CUDA_INDEX=${PYTORCH_CUDA_INDEX}"
+            echo "LLM_PYTORCH_CUDA_INDEX=${LLM_PYTORCH_CUDA_INDEX}"
+            echo "VLLM_VERSION=${VLLM_VERSION}"
+            echo "XFORMERS_VERSION=${XFORMERS_VERSION}"
+            echo "DEEPSPEED_VERSION=${DEEPSPEED_VERSION}"
+            echo "TRANSFORMERS_VERSION=${TRANSFORMERS_VERSION}"
+            echo "ACCELERATE_VERSION=${ACCELERATE_VERSION}"
+            echo "DATASETS_VERSION=${DATASETS_VERSION}"
+            echo "PEFT_VERSION=${PEFT_VERSION}"
+            echo "TRL_VERSION=${TRL_VERSION}"
+            echo "BITSANDBYTES_VERSION=${BITSANDBYTES_VERSION}"
+            echo "SENTENCEPIECE_VERSION=${SENTENCEPIECE_VERSION}"
             echo "BASE_IMAGE_TAG=${BASE_IMAGE_TAG}"
             echo "JUPYTER_BASE_IMAGE_TAG=${JUPYTER_BASE_IMAGE_TAG}"
             echo "JUPYTER_CUDA_PYTORCH_IMAGE_TAG=${JUPYTER_CUDA_PYTORCH_IMAGE_TAG}"
             echo "CODESERVER_IMAGE_TAG=${CODESERVER_IMAGE_TAG}"
+            echo "CODESERVER_LLM_IMAGE_TAG=${CODESERVER_LLM_IMAGE_TAG}"
           } >> "${GITHUB_ENV}"
 
           {
@@ -294,6 +340,7 @@ jobs:
               --build-arg "PYTORCH_VERSION=${PYTORCH_VERSION}" \
               --build-arg "TORCHAUDIO_VERSION=${TORCHAUDIO_VERSION}" \
               --build-arg "TORCHVISION_VERSION=${TORCHVISION_VERSION}" \
+              --build-arg "PYTORCH_CUDA_INDEX=${PYTORCH_CUDA_INDEX}" \
               kubeflow/jupyter-cuda-torch
           }
 
@@ -314,8 +361,40 @@ jobs:
               --build-arg "PYTORCH_VERSION=${PYTORCH_VERSION}" \
               --build-arg "TORCHAUDIO_VERSION=${TORCHAUDIO_VERSION}" \
               --build-arg "TORCHVISION_VERSION=${TORCHVISION_VERSION}" \
+              --build-arg "PYTORCH_CUDA_INDEX=${PYTORCH_CUDA_INDEX}" \
               --build-arg "CODESERVER_VERSION=${CODESERVER_VERSION}" \
               kubeflow/code-server
+          }
+
+          build_code_server_llm() {
+            docker buildx build \
+              --platform "${TARGETPLATFORM}" \
+              --file kubeflow/code-server-llm/Dockerfile \
+              --tag "${IMAGE_NAME}:${CODESERVER_LLM_IMAGE_TAG}" \
+            --tag "${IMAGE_NAME}:code-server-llm-latest" \
+              --cache-from "type=gha,scope=kubeflow-code-server-llm" \
+              --cache-to "type=gha,mode=max,scope=kubeflow-code-server-llm" \
+              "${OUTPUT_ARGS[@]}" \
+              --build-arg "TARGETPLATFORM=${TARGETPLATFORM}" \
+              --build-arg "LLM_BASE_IMAGE=${LLM_BASE_IMAGE}" \
+              --build-arg "CODESERVER_VERSION=${CODESERVER_VERSION}" \
+              --build-arg "UV_VERSION=${UV_VERSION}" \
+              --build-arg "PYTHON_VERSION=${PYTHON_VERSION}" \
+              --build-arg "PYTORCH_VERSION=${PYTORCH_VERSION}" \
+              --build-arg "TORCHAUDIO_VERSION=${TORCHAUDIO_VERSION}" \
+              --build-arg "TORCHVISION_VERSION=${TORCHVISION_VERSION}" \
+              --build-arg "LLM_PYTORCH_CUDA_INDEX=${LLM_PYTORCH_CUDA_INDEX}" \
+              --build-arg "VLLM_VERSION=${VLLM_VERSION}" \
+              --build-arg "XFORMERS_VERSION=${XFORMERS_VERSION}" \
+              --build-arg "DEEPSPEED_VERSION=${DEEPSPEED_VERSION}" \
+              --build-arg "TRANSFORMERS_VERSION=${TRANSFORMERS_VERSION}" \
+              --build-arg "ACCELERATE_VERSION=${ACCELERATE_VERSION}" \
+              --build-arg "DATASETS_VERSION=${DATASETS_VERSION}" \
+              --build-arg "PEFT_VERSION=${PEFT_VERSION}" \
+              --build-arg "TRL_VERSION=${TRL_VERSION}" \
+              --build-arg "BITSANDBYTES_VERSION=${BITSANDBYTES_VERSION}" \
+              --build-arg "SENTENCEPIECE_VERSION=${SENTENCEPIECE_VERSION}" \
+              kubeflow/code-server-llm
           }
 
           case "${IMAGE}" in
@@ -341,8 +420,140 @@ jobs:
               build_base
               build_code_server
               ;;
+            code-server-llm)
+              echo "code-server-llm is built by the matrix job."
+              ;;
             *)
               echo "Unknown image set: ${IMAGE}" >&2
               exit 1
               ;;
           esac
+
+  prepare-code-server-llm-matrix:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.image == 'all' || inputs.image == 'code-server-llm' }}
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read matrix
+        id: matrix
+        run: |
+          set -euo pipefail
+          matrix="$(python3 -c 'import json; print(json.dumps(json.load(open("versions/code-server-llm-matrix.json"))))')"
+          echo "matrix=${matrix}" >> "${GITHUB_OUTPUT}"
+
+  build-code-server-llm-matrix:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.image == 'all' || inputs.image == 'code-server-llm' }}
+    needs: prepare-code-server-llm-matrix
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare-code-server-llm-matrix.outputs.matrix) }}
+    env:
+      PROJECT_NAME: kubeflow
+      REGISTRY_PREFIX: ${{ inputs.registry_prefix || 'docker.io/terencelau' }}
+      TARGETPLATFORM: ${{ inputs.target_platform || 'linux/amd64' }}
+      INPUT_PUSH_IMAGES: ${{ inputs.push_images }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Resolve push settings
+        id: resolve
+        run: |
+          set -euo pipefail
+
+          PUSH_IMAGES=false
+          if [ "${GITHUB_EVENT_NAME}" = "push" ] || [ "${GITHUB_EVENT_NAME}" = "schedule" ] || [ "${INPUT_PUSH_IMAGES:-false}" = "true" ]; then
+            PUSH_IMAGES=true
+          fi
+          if [ "${PUSH_IMAGES}" != "true" ] && [[ "${TARGETPLATFORM}" == *,* ]]; then
+            echo "Multi-platform builds require push_images=true." >&2
+            exit 1
+          fi
+
+          echo "PUSH_IMAGES=${PUSH_IMAGES}" >> "${GITHUB_ENV}"
+          echo "IMAGE_NAME=${REGISTRY_PREFIX}/${PROJECT_NAME}" >> "${GITHUB_ENV}"
+          echo "push_images=${PUSH_IMAGES}" >> "${GITHUB_OUTPUT}"
+
+      - name: Login to Docker Hub
+        if: steps.resolve.outputs.push_images == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build code-server-llm matrix image
+        env:
+          VARIANT: ${{ matrix.variant }}
+          LATEST: ${{ matrix.latest }}
+          CODESERVER_VERSION: ${{ matrix.code_server_version }}
+          UV_VERSION: ${{ matrix.uv_version }}
+          LLM_BASE_IMAGE: ${{ matrix.llm_base_image }}
+          PYTHON_VERSION: ${{ matrix.python_version || '3.11.11' }}
+          PYTORCH_VERSION: ${{ matrix.pytorch_version }}
+          TORCHAUDIO_VERSION: ${{ matrix.torchaudio_version }}
+          TORCHVISION_VERSION: ${{ matrix.torchvision_version }}
+          LLM_PYTORCH_CUDA_INDEX: ${{ matrix.llm_pytorch_cuda_index }}
+          VLLM_VERSION: ${{ matrix.vllm_version }}
+          XFORMERS_VERSION: ${{ matrix.xformers_version }}
+          DEEPSPEED_VERSION: ${{ matrix.deepspeed_version }}
+          TRANSFORMERS_VERSION: ${{ matrix.transformers_version }}
+          ACCELERATE_VERSION: ${{ matrix.accelerate_version }}
+          DATASETS_VERSION: ${{ matrix.datasets_version }}
+          PEFT_VERSION: ${{ matrix.peft_version }}
+          TRL_VERSION: ${{ matrix.trl_version }}
+          BITSANDBYTES_VERSION: ${{ matrix.bitsandbytes_version }}
+          SENTENCEPIECE_VERSION: ${{ matrix.sentencepiece_version }}
+        run: |
+          set -euo pipefail
+
+          if [ "${PUSH_IMAGES}" = "true" ]; then
+            OUTPUT_ARGS=(--push)
+          else
+            OUTPUT_ARGS=(--load)
+          fi
+
+          TAG="${PROJECT_NAME}-code-server-llm-${VARIANT}"
+          TAG_ARGS=(--tag "${IMAGE_NAME}:${TAG}")
+          if [ "${LATEST}" = "true" ]; then
+            TAG_ARGS+=(--tag "${IMAGE_NAME}:code-server-llm-latest")
+          fi
+
+          docker buildx build \
+            --platform "${TARGETPLATFORM}" \
+            --file kubeflow/code-server-llm/Dockerfile \
+            "${TAG_ARGS[@]}" \
+            --cache-from "type=gha,scope=kubeflow-code-server-llm-${VARIANT}" \
+            --cache-to "type=gha,mode=max,scope=kubeflow-code-server-llm-${VARIANT}" \
+            "${OUTPUT_ARGS[@]}" \
+            --build-arg "TARGETPLATFORM=${TARGETPLATFORM}" \
+            --build-arg "LLM_BASE_IMAGE=${LLM_BASE_IMAGE}" \
+            --build-arg "CODESERVER_VERSION=${CODESERVER_VERSION}" \
+            --build-arg "UV_VERSION=${UV_VERSION}" \
+            --build-arg "PYTHON_VERSION=${PYTHON_VERSION}" \
+            --build-arg "PYTORCH_VERSION=${PYTORCH_VERSION}" \
+            --build-arg "TORCHAUDIO_VERSION=${TORCHAUDIO_VERSION}" \
+            --build-arg "TORCHVISION_VERSION=${TORCHVISION_VERSION}" \
+            --build-arg "LLM_PYTORCH_CUDA_INDEX=${LLM_PYTORCH_CUDA_INDEX}" \
+            --build-arg "VLLM_VERSION=${VLLM_VERSION}" \
+            --build-arg "XFORMERS_VERSION=${XFORMERS_VERSION}" \
+            --build-arg "DEEPSPEED_VERSION=${DEEPSPEED_VERSION}" \
+            --build-arg "TRANSFORMERS_VERSION=${TRANSFORMERS_VERSION}" \
+            --build-arg "ACCELERATE_VERSION=${ACCELERATE_VERSION}" \
+            --build-arg "DATASETS_VERSION=${DATASETS_VERSION}" \
+            --build-arg "PEFT_VERSION=${PEFT_VERSION}" \
+            --build-arg "TRL_VERSION=${TRL_VERSION}" \
+            --build-arg "BITSANDBYTES_VERSION=${BITSANDBYTES_VERSION}" \
+            --build-arg "SENTENCEPIECE_VERSION=${SENTENCEPIECE_VERSION}" \
+            kubeflow/code-server-llm

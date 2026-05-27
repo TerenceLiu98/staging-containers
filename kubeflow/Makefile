@@ -18,11 +18,25 @@ NODE_MAJOR_VERSION ?= 20
 MINIFORGE_VERSION ?= 25.3.1-0
 PIP_VERSION ?= 24.3.1
 PYTHON_VERSION ?= 3.11.11
-CUDA_VERSION ?= 12.4
-PYTORCH_VERSION ?= 2.5.1
-TORCHAUDIO_VERSION ?= 2.5.1
-TORCHVISION_VERSION ?= 0.20.1
-CODESERVER_VERSION ?= 4.103.2
+CUDA_VERSION ?= 13.0
+PYTORCH_VERSION ?= 2.10.0
+TORCHAUDIO_VERSION ?= 2.10.0
+TORCHVISION_VERSION ?= 0.25.0
+CODESERVER_VERSION ?= 4.121.0
+UV_VERSION ?= 0.11.16
+LLM_BASE_IMAGE ?= nvidia/cuda:13.0.3-devel-ubuntu22.04
+PYTORCH_CUDA_INDEX ?= cu130
+LLM_PYTORCH_CUDA_INDEX ?= cu130
+VLLM_VERSION ?= 0.19.1
+XFORMERS_VERSION ?= 0.0.34
+DEEPSPEED_VERSION ?= 0.19.0
+TRANSFORMERS_VERSION ?= 5.9.0
+ACCELERATE_VERSION ?= 1.13.0
+DATASETS_VERSION ?= 4.8.5
+PEFT_VERSION ?= 0.19.1
+TRL_VERSION ?= 1.5.1
+BITSANDBYTES_VERSION ?= 0.49.2
+SENTENCEPIECE_VERSION ?= 0.2.1
 
 
 # Dynamic image tags
@@ -30,12 +44,13 @@ BASE_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)
 JUPYTER_BASE_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-jupyter-$(JUPYTER_VERSION)
 JUPYTER_CUDA_PYTORCH_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-jupyter-$(JUPYTER_VERSION)-cuda-$(CUDA_VERSION)-pytorch-$(PYTORCH_VERSION)
 CODESERVER_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-code-server-$(CODESERVER_VERSION)
+CODESERVER_LLM_IMAGE_TAG := $(PROJECT_NAME)-code-server-llm-cuda-$(CUDA_VERSION)-torch-$(PYTORCH_VERSION)-vllm-$(VLLM_VERSION)
 
-.PHONY: all build-base push-base build-jupyter-base push-jupyter-base build-jupyter-cuda-pytorch push-jupyter-cuda-pytorch
+.PHONY: all build-base push-base build-jupyter-base push-jupyter-base build-jupyter-cuda-pytorch push-jupyter-cuda-pytorch build-code-server build-code-server-llm push-code-server push-code-server-llm
 
 # Default target
-build-all: build-base build-jupyter-base build-jupyter-cuda-pytorch build-code-server
-push-all: push-base push-jupyter-base push-jupyter-cuda-pytorch push-code-server
+build-all: build-base build-jupyter-base build-jupyter-cuda-pytorch build-code-server build-code-server-llm
+push-all: push-base push-jupyter-base push-jupyter-cuda-pytorch push-code-server push-code-server-llm
 
 # Build base image
 build-base:
@@ -92,6 +107,7 @@ build-jupyter-cuda-pytorch: build-jupyter-base
 		--build-arg PYTORCH_VERSION=$(PYTORCH_VERSION) \
 		--build-arg TORCHAUDIO_VERSION=$(TORCHAUDIO_VERSION) \
 		--build-arg TORCHVISION_VERSION=$(TORCHVISION_VERSION) \
+		--build-arg PYTORCH_CUDA_INDEX=$(PYTORCH_CUDA_INDEX) \
 		jupyter-cuda-torch
 	$(CONTAINER_CLI) tag $(IMAGE_NAME):$(JUPYTER_CUDA_PYTORCH_IMAGE_TAG) $(IMAGE_NAME):latest-jupyter-cuda-pytorch
 
@@ -112,6 +128,7 @@ build-code-server: build-base
 		--build-arg PYTORCH_VERSION=$(PYTORCH_VERSION) \
 		--build-arg TORCHAUDIO_VERSION=$(TORCHAUDIO_VERSION) \
 		--build-arg TORCHVISION_VERSION=$(TORCHVISION_VERSION) \
+		--build-arg PYTORCH_CUDA_INDEX=$(PYTORCH_CUDA_INDEX) \
 		--build-arg CODESERVER_VERSION=$(CODESERVER_VERSION) \
 		code-server
 	$(CONTAINER_CLI) tag $(IMAGE_NAME):$(CODESERVER_IMAGE_TAG) $(IMAGE_NAME):latest-code-server
@@ -119,3 +136,33 @@ build-code-server: build-base
 push-code-server:
 	$(CONTAINER_CLI) push $(IMAGE_NAME):$(CODESERVER_IMAGE_TAG)
 	$(CONTAINER_CLI) push $(IMAGE_NAME):latest-code-server
+
+build-code-server-llm:
+	$(CONTAINER_CLI) build \
+		-f code-server-llm/Dockerfile \
+		-t $(IMAGE_NAME):$(CODESERVER_LLM_IMAGE_TAG) \
+		--build-arg TARGETPLATFORM=$(TARGETPLATFORM) \
+		--build-arg LLM_BASE_IMAGE=$(LLM_BASE_IMAGE) \
+		--build-arg CODESERVER_VERSION=$(CODESERVER_VERSION) \
+		--build-arg UV_VERSION=$(UV_VERSION) \
+		--build-arg PYTHON_VERSION=$(PYTHON_VERSION) \
+		--build-arg PYTORCH_VERSION=$(PYTORCH_VERSION) \
+		--build-arg TORCHAUDIO_VERSION=$(TORCHAUDIO_VERSION) \
+		--build-arg TORCHVISION_VERSION=$(TORCHVISION_VERSION) \
+		--build-arg LLM_PYTORCH_CUDA_INDEX=$(LLM_PYTORCH_CUDA_INDEX) \
+		--build-arg VLLM_VERSION=$(VLLM_VERSION) \
+		--build-arg XFORMERS_VERSION=$(XFORMERS_VERSION) \
+		--build-arg DEEPSPEED_VERSION=$(DEEPSPEED_VERSION) \
+		--build-arg TRANSFORMERS_VERSION=$(TRANSFORMERS_VERSION) \
+		--build-arg ACCELERATE_VERSION=$(ACCELERATE_VERSION) \
+		--build-arg DATASETS_VERSION=$(DATASETS_VERSION) \
+		--build-arg PEFT_VERSION=$(PEFT_VERSION) \
+		--build-arg TRL_VERSION=$(TRL_VERSION) \
+		--build-arg BITSANDBYTES_VERSION=$(BITSANDBYTES_VERSION) \
+		--build-arg SENTENCEPIECE_VERSION=$(SENTENCEPIECE_VERSION) \
+		code-server-llm
+	$(CONTAINER_CLI) tag $(IMAGE_NAME):$(CODESERVER_LLM_IMAGE_TAG) $(IMAGE_NAME):code-server-llm-latest
+
+push-code-server-llm:
+	$(CONTAINER_CLI) push $(IMAGE_NAME):$(CODESERVER_LLM_IMAGE_TAG)
+	$(CONTAINER_CLI) push $(IMAGE_NAME):code-server-llm-latest
