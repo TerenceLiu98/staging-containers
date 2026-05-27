@@ -149,9 +149,17 @@ RUN if getent passwd "${NB_UID}" >/dev/null; then \
         --groups "${USERS_GID},sudo" "${NB_USER}"; \
     fi \
  && echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers \
- && mkdir -p "${HOME}" "${HOME_TMP}" "${PERSISTENT_DIR}" "${UV_PYTHON_INSTALL_DIR}" "${VIRTUAL_ENV}" \
+ && mkdir -p \
+    "${HOME}" \
+    "${HOME}/.cache" \
+    "${HOME}/.config" \
+    "${HOME}/.local" \
+    "${HOME_TMP}" \
+    "${PERSISTENT_DIR}" \
+    "${UV_PYTHON_INSTALL_DIR}" \
+    "${VIRTUAL_ENV}" \
  && chmod 2775 "${HOME}" "${HOME_TMP}" "${PERSISTENT_DIR}" "${UV_PYTHON_INSTALL_DIR}" "${VIRTUAL_ENV}" \
- && chown -R "${NB_USER}:${NB_GID}" "${HOME}" "${HOME_TMP}" "${PERSISTENT_DIR}" "${UV_PYTHON_INSTALL_DIR}" "${VIRTUAL_ENV}"
+ && chown -R "${NB_UID}:${NB_GID}" "${HOME}" "${HOME_TMP}" "${PERSISTENT_DIR}" "${UV_PYTHON_INSTALL_DIR}" "${VIRTUAL_ENV}"
 
 RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" -o /tmp/uv-install.sh \
  && env UV_INSTALL_DIR=/usr/local/bin sh /tmp/uv-install.sh \
@@ -187,9 +195,12 @@ RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" -o /tmp/uv-instal
     "uvicorn[standard]" \
     "jupyter" \
     "ipykernel" \
- && chown -R "${NB_USER}:${NB_GID}" "${UV_PYTHON_INSTALL_DIR}" "${VIRTUAL_ENV}"
+ && chown -R "${NB_UID}:${NB_GID}" "${UV_PYTHON_INSTALL_DIR}" "${VIRTUAL_ENV}"
 
 COPY --chown=${NB_USER}:${NB_GID} --chmod=755 s6/ /etc
+
+RUN mkdir -p "${HOME}/.config/code-server" "${HOME}/.local/share/code-server" "${HOME}/.cache/code-server" \
+ && chown -R "${NB_UID}:${NB_GID}" "${HOME}"
 
 USER ${NB_UID}
 WORKDIR ${PERSISTENT_DIR}
