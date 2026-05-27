@@ -52,33 +52,53 @@ RUN export DEBIAN_FRONTEND=noninteractive \
  && apt-get update \
  && apt-get install -y --no-install-recommends \
     apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg \
+    software-properties-common \
+ && add-apt-repository -y universe \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends \
     bash \
     build-essential \
-    ca-certificates \
     cmake \
-    curl \
+    dnsutils \
+    fd-find \
     git \
     git-lfs \
-    gnupg \
+    htop \
+    iproute2 \
+    iputils-ping \
+    jq \
+    less \
     libaio-dev \
     libopenmpi-dev \
     locales \
+    lsof \
     nano \
+    net-tools \
     ninja-build \
+    numactl \
     openmpi-bin \
     openssh-client \
+    pciutils \
     pkg-config \
+    procps \
+    psmisc \
     python3 \
     python3-pip \
     python3-venv \
+    ripgrep \
     rsync \
-    software-properties-common \
     sudo \
+    tmux \
+    tree \
     unzip \
     vim \
     wget \
     zip \
- && git lfs install \
+ && ln -sf /usr/bin/fdfind /usr/local/bin/fd \
+ && git lfs install --system \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 

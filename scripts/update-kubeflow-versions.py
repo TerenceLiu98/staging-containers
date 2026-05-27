@@ -13,6 +13,7 @@ PYPI_URL = "https://pypi.org/pypi/{package}/json"
 GITHUB_RELEASE_URL = "https://api.github.com/repos/{repo}/releases/latest"
 PYTORCH_INDEX_URL = "https://download.pytorch.org/whl/{index}/torch/"
 DOCKERHUB_CUDA_TAGS_URL = "https://hub.docker.com/v2/repositories/nvidia/cuda/tags/?page_size=100&name={prefix}."
+CUDA_UBUNTU_BASES = ("ubuntu24.04", "ubuntu22.04")
 
 PYTORCH_CUDA_INDEXES = ("cu130", "cu128", "cu126", "cu124")
 CUDA_VERSION_BY_INDEX = {
@@ -150,15 +151,17 @@ def cuda_indexes_for_torch(torch_version):
 
 def latest_cuda_devel_image(cuda_version):
     data = fetch_json(DOCKERHUB_CUDA_TAGS_URL.format(prefix=cuda_version))
-    tags = []
-    suffix = "-devel-ubuntu22.04"
-    for result in data.get("results", []):
-        name = result.get("name", "")
-        if name.startswith(f"{cuda_version}.") and name.endswith(suffix):
-            tags.append(name)
-    if not tags:
-        return f"nvidia/cuda:{cuda_version}.0-devel-ubuntu22.04"
-    return f"nvidia/cuda:{sorted(tags, key=version_key)[-1]}"
+    names = [result.get("name", "") for result in data.get("results", [])]
+    for ubuntu_base in CUDA_UBUNTU_BASES:
+        suffix = f"-devel-{ubuntu_base}"
+        tags = [
+            name
+            for name in names
+            if name.startswith(f"{cuda_version}.") and name.endswith(suffix)
+        ]
+        if tags:
+            return f"nvidia/cuda:{sorted(tags, key=version_key)[-1]}"
+    return f"nvidia/cuda:{cuda_version}.0-devel-ubuntu22.04"
 
 
 def latest_xformers_for_torch(torch_version):

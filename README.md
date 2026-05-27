@@ -58,6 +58,11 @@ does not use conda. Its CUDA base image is pinned by `LLM_BASE_IMAGE` in
 environment with PyTorch, vLLM, xFormers, DeepSpeed, Transformers, Accelerate,
 PEFT, TRL, bitsandbytes, OpenAI, Anthropic, FastAPI, and Jupyter tooling.
 
+The image also includes system tools commonly needed for GPU/LLM development:
+`tmux`, `htop`, `jq`, `ripgrep`, `fd`, `tree`, `less`, `lsof`, `iproute2`,
+`net-tools`, `dnsutils`, `pciutils`, `numactl`, `procps`, `psmisc`, `git-lfs`,
+OpenMPI development packages, `cmake`, and `ninja-build`.
+
 `code-server-llm` is built as a version matrix from
 `versions/code-server-llm-matrix.json`. Each entry is a compatible tuple of CUDA
 wheel index, NVIDIA CUDA base image, PyTorch, vLLM, and xFormers. GitHub Actions
