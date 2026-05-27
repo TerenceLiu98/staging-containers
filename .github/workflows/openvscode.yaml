@@ -1,0 +1,104 @@
+name: Build and Push Images 
+
+on:
+  push:
+    branches:
+      - openvscode-server
+  workflow_dispatch:
+
+env:
+  REGISTRY_PREFIX: terencelau
+  TARGETPLATFORM: linux/amd64
+  VSCODE_VERSION: openvscode-server-v1.102.3
+  MINIFORGE_VERSION: 25.3.1-0
+  PROJECT_NAME: openvscode-server
+  IMAGE_NAME: terencelau/openvscode-server
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Log in to Docker Registry
+      uses: docker/login-action@v2
+      with:
+        registry: docker.io
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Set dynamic image tag
+      run: |
+        echo "BASE_IMAGE_TAG=${{ env.VSCODE_VERSION }}-base" >> $GITHUB_ENV
+        echo "PYTHON_IMAGE_TAG=${{ env.VSCODE_VERSION }}-python" >> $GITHUB_ENV
+        echo "MINIFORGE_IMAGE_TAG=${{ env.VSCODE_VERSION }}-miniforge-${{ env.MINIFORGE_VERSION }}" >> $GITHUB_ENV
+        echo "RUST_IMAGE_TAG=${{ env.VSCODE_VERSION }}-rust" >> $GITHUB_ENV
+
+    - name: Build base image
+      run: |
+        docker build \
+          -f openvscode-server/base/Dockerfile \
+          -t $IMAGE_NAME:$BASE_IMAGE_TAG \
+          --build-arg TARGETPLATFORM=$TARGETPLATFORM \
+          --build-arg VSCODE_VERSION=$VSCODE_VERSION \
+          openvscode-server/base
+        docker tag $IMAGE_NAME:$BASE_IMAGE_TAG $IMAGE_NAME:latest-base
+
+    - name: Push base image
+      run: |
+        docker push $IMAGE_NAME:$BASE_IMAGE_TAG
+        docker push $IMAGE_NAME:latest-base
+
+    - name: Build python image
+      run: |
+        docker build \
+          -f openvscode-server/python/Dockerfile \
+          -t $IMAGE_NAME:$PYTHON_IMAGE_TAG \
+          --build-arg TARGETPLATFORM=$TARGETPLATFORM \
+          --build-arg REGISTRY_PREFIX=$REGISTRY_PREFIX \
+          openvscode-server/python
+        docker tag $IMAGE_NAME:$PYTHON_IMAGE_TAG $IMAGE_NAME:latest-python
+
+    - name: Push python image
+      run: |
+        docker push $IMAGE_NAME:$PYTHON_IMAGE_TAG
+        docker push $IMAGE_NAME:latest-python
+
+    - name: Build miniforge image
+      run: |
+        docker build \
+          -f openvscode-server/miniforge/Dockerfile \
+          -t $IMAGE_NAME:$MINIFORGE_IMAGE_TAG \
+          --build-arg TARGETPLATFORM=$TARGETPLATFORM \
+          --build-arg REGISTRY_PREFIX=$REGISTRY_PREFIX \
+          --build-arg MINIFORGE_VERSION=$MINIFORGE_VERSION \
+          openvscode-server/miniforge
+        docker tag $IMAGE_NAME:$MINIFORGE_IMAGE_TAG $IMAGE_NAME:latest-miniforge
+
+    - name: Push minifoge image
+      run: |
+        docker push $IMAGE_NAME:$MINIFORGE_IMAGE_TAG
+        docker push $IMAGE_NAME:latest-miniforge
+
+    - name: Build rust image
+      run: |
+        docker build \
+          -f openvscode-server/rust/Dockerfile \
+          -t $IMAGE_NAME:$RUST_IMAGE_TAG \
+          --build-arg TARGETPLATFORM=$TARGETPLATFORM \
+          --build-arg REGISTRY_PREFIX=$REGISTRY_PREFIX \
+          openvscode-server/rust
+        docker tag $IMAGE_NAME:$RUST_IMAGE_TAG $IMAGE_NAME:latest-rust
+
+    - name: Push rust image
+      run: |
+        docker push $IMAGE_NAME:$RUST_IMAGE_TAG
+        docker push $IMAGE_NAME:latest-rust

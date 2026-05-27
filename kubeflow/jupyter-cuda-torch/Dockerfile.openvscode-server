@@ -1,0 +1,80 @@
+ARG PROJECT_NAME
+ARG BASE_IMAGE_TAG
+ARG REGISTRY_PREFIX
+ARG TARGETPLATFORM
+
+FROM --platform=$TARGETPLATFORM $REGISTRY_PREFIX/$PROJECT_NAME:$BASE_IMAGE_TAG
+
+ARG CUDA_VERSION
+ARG PYTORCH_VERSION
+ARG TORCHAUDIO_VERSION
+ARG TORCHVISION_VERSION
+
+ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
+ENV NVIDIA_REQUIRE_CUDA "cuda>=${CUDA_VERSION}"
+
+ARG CODESERVER_VERSION=4.96.4
+
+USER root 
+
+ARG RELEASE_TAG="openvscode-server-v1.103.1"
+ARG RELEASE_ORG="gitpod-io"
+ARG OPENVSCODE_SERVER_ROOT="/opt/openvscode-server"
+
+# Downloading the latest VSC Server release and extracting the release archive
+# Rename `openvscode-server` cli tool to `code` for convenience
+RUN if [ -z "${RELEASE_TAG}" ]; then \
+        echo "The RELEASE_TAG build arg must be set." >&2 && \
+        exit 1; \
+    fi && \
+    arch=$(uname -m) && \
+    if [ "${arch}" = "x86_64" ]; then \
+        arch="x64"; \
+    elif [ "${arch}" = "aarch64" ]; then \
+        arch="arm64"; \
+    elif [ "${arch}" = "armv7l" ]; then \
+        arch="armhf"; \
+    fi && \
+    wget https://github.com/${RELEASE_ORG}/openvscode-server/releases/download/${RELEASE_TAG}/${RELEASE_TAG}-linux-${arch}.tar.gz && \
+    tar -xzf ${RELEASE_TAG}-linux-${arch}.tar.gz && \
+    mv -f ${RELEASE_TAG}-linux-${arch} ${OPENVSCODE_SERVER_ROOT} && \
+    cp ${OPENVSCODE_SERVER_ROOT}/bin/remote-cli/openvscode-server ${OPENVSCODE_SERVER_ROOT}/bin/remote-cli/code && \
+    rm -f ${RELEASE_TAG}-linux-${arch}.tar.gz
+
+SHELL ["/bin/bash", "-c"]
+RUN \
+    urls=(\
+        https://open-vsx.org/api/ms-python/python/2025.12.0/file/ms-python.python-2025.12.0.vsix \
+        https://open-vsx.org/api/ms-toolsai/jupyter/2025.7.0/file/ms-toolsai.jupyter-2025.7.0.vsix \
+        https://open-vsx.org/api/mskelton/one-dark-theme/1.14.3/file/mskelton.one-dark-theme-1.14.3.vsix \
+        https://open-vsx.org/api/emmanuelbeziat/vscode-great-icons/2.1.119/file/emmanuelbeziat.vscode-great-icons-2.1.119.vsix \
+        https://open-vsx.org/api/alexcvzz/vscode-sqlite/0.14.1/file/alexcvzz.vscode-sqlite-0.14.1.vsix \
+        https://open-vsx.org/api/eamodio/gitlens/2025.9.405/file/eamodio.gitlens-2025.9.405.vsix \
+        https://open-vsx.org/api/saoudrizwan/claude-dev/3.27.1/file/saoudrizwan.claude-dev-3.27.1.vsix \
+        https://open-vsx.org/api/Alibaba-Cloud/tongyi-lingma/2.5.17/file/Alibaba-Cloud.tongyi-lingma-2.5.17.vsix \
+    )\
+    && tdir=/tmp/exts && mkdir -p "${tdir}" && cd "${tdir}" \
+    && wget "${urls[@]}" && \
+    exts=(\
+        gitpod.gitpod-theme \
+        "${tdir}"/* \
+    )\
+    && for ext in "${exts[@]}"; do ${OPENVSCODE} --install-extension "${ext}"; done
+
+USER $NB_UID
+
+# install - pytorch (cuda)
+RUN python3 -m pip install --index-url https://download.pytorch.org/whl/cu124 \
+    torch==${PYTORCH_VERSION} \
+    torchaudio==${TORCHAUDIO_VERSION} \
+    torchvision==${TORCHVISION_VERSION}
+
+# install - requirements.txt
+COPY --chown=${NB_USER}:${NB_GID} requirements.txt /tmp
+RUN python3 -m pip install -r /tmp/requirements.txt --no-cache-dir \
+    && rm -f /tmp/requirements.txt
+
+RUN python3 -m pip install jupyter-openvscodeserver-proxy
+
+RUN pip install --extra-index-url https://pypi.anaconda.org/rapidsai-wheels-nightly/simple --pre jupyterlab_nvdashboard

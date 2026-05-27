@@ -1,0 +1,348 @@
+name: Build Kubeflow Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: Image set to build.
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - base
+          - jupyter
+          - jupyter-cuda-pytorch
+          - code-server
+      push_images:
+        description: Push images to the registry.
+        required: true
+        default: true
+        type: boolean
+      auto_latest_code_server:
+        description: Resolve the latest coder/code-server release at build time.
+        required: true
+        default: false
+        type: boolean
+      registry_prefix:
+        description: Docker image namespace, for example docker.io/terencelau or terencelau.
+        required: false
+        default: "docker.io/terencelau"
+        type: string
+      target_platform:
+        description: Docker target platform.
+        required: false
+        default: linux/amd64
+        type: string
+      code_server_version:
+        description: Override CODESERVER_VERSION from versions/kubeflow.env.
+        required: false
+        default: ""
+        type: string
+      jupyter_version:
+        description: Override JUPYTER_VERSION from versions/kubeflow.env.
+        required: false
+        default: ""
+        type: string
+      jupyterlab_version:
+        description: Override JUPYTERLAB_VERSION from versions/kubeflow.env.
+        required: false
+        default: ""
+        type: string
+      python_version:
+        description: Override PYTHON_VERSION from versions/kubeflow.env.
+        required: false
+        default: ""
+        type: string
+      cuda_version:
+        description: Override CUDA_VERSION from versions/kubeflow.env.
+        required: false
+        default: ""
+        type: string
+      pytorch_version:
+        description: Override PYTORCH_VERSION from versions/kubeflow.env.
+        required: false
+        default: ""
+        type: string
+      torchaudio_version:
+        description: Override TORCHAUDIO_VERSION from versions/kubeflow.env.
+        required: false
+        default: ""
+        type: string
+      torchvision_version:
+        description: Override TORCHVISION_VERSION from versions/kubeflow.env.
+        required: false
+        default: ""
+        type: string
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - .github/workflows/kubeflow-images.yml
+      - kubeflow/**
+      - versions/kubeflow.env
+  schedule:
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kubeflow-images-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      PROJECT_NAME: kubeflow
+      VERSION_FILE: versions/kubeflow.env
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Resolve versions and build settings
+        id: resolve
+        env:
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_PUSH_IMAGES: ${{ inputs.push_images }}
+          INPUT_AUTO_LATEST_CODE_SERVER: ${{ inputs.auto_latest_code_server }}
+          INPUT_REGISTRY_PREFIX: ${{ inputs.registry_prefix }}
+          INPUT_TARGET_PLATFORM: ${{ inputs.target_platform }}
+          INPUT_CODE_SERVER_VERSION: ${{ inputs.code_server_version }}
+          INPUT_JUPYTER_VERSION: ${{ inputs.jupyter_version }}
+          INPUT_JUPYTERLAB_VERSION: ${{ inputs.jupyterlab_version }}
+          INPUT_PYTHON_VERSION: ${{ inputs.python_version }}
+          INPUT_CUDA_VERSION: ${{ inputs.cuda_version }}
+          INPUT_PYTORCH_VERSION: ${{ inputs.pytorch_version }}
+          INPUT_TORCHAUDIO_VERSION: ${{ inputs.torchaudio_version }}
+          INPUT_TORCHVISION_VERSION: ${{ inputs.torchvision_version }}
+        run: |
+          set -euo pipefail
+
+          set -a
+          . "${VERSION_FILE}"
+          set +a
+
+          IMAGE="${INPUT_IMAGE:-all}"
+          REGISTRY_PREFIX="${INPUT_REGISTRY_PREFIX:-docker.io/terencelau}"
+          TARGETPLATFORM="${INPUT_TARGET_PLATFORM:-linux/amd64}"
+
+          if [ -n "${INPUT_CODE_SERVER_VERSION:-}" ]; then
+            CODESERVER_VERSION="${INPUT_CODE_SERVER_VERSION}"
+          fi
+          if [ -n "${INPUT_JUPYTER_VERSION:-}" ]; then
+            JUPYTER_VERSION="${INPUT_JUPYTER_VERSION}"
+          fi
+          if [ -n "${INPUT_JUPYTERLAB_VERSION:-}" ]; then
+            JUPYTERLAB_VERSION="${INPUT_JUPYTERLAB_VERSION}"
+          fi
+          if [ -n "${INPUT_PYTHON_VERSION:-}" ]; then
+            PYTHON_VERSION="${INPUT_PYTHON_VERSION}"
+          fi
+          if [ -n "${INPUT_CUDA_VERSION:-}" ]; then
+            CUDA_VERSION="${INPUT_CUDA_VERSION}"
+          fi
+          if [ -n "${INPUT_PYTORCH_VERSION:-}" ]; then
+            PYTORCH_VERSION="${INPUT_PYTORCH_VERSION}"
+          fi
+          if [ -n "${INPUT_TORCHAUDIO_VERSION:-}" ]; then
+            TORCHAUDIO_VERSION="${INPUT_TORCHAUDIO_VERSION}"
+          fi
+          if [ -n "${INPUT_TORCHVISION_VERSION:-}" ]; then
+            TORCHVISION_VERSION="${INPUT_TORCHVISION_VERSION}"
+          fi
+
+          AUTO_LATEST_CODE_SERVER="${INPUT_AUTO_LATEST_CODE_SERVER:-false}"
+          if [ "${AUTO_LATEST_CODE_SERVER}" = "true" ]; then
+            latest_tag="$(curl -fsSL https://api.github.com/repos/coder/code-server/releases/latest | jq -r '.tag_name')"
+            CODESERVER_VERSION="${latest_tag#v}"
+          fi
+
+          PUSH_IMAGES=false
+          if [ "${GITHUB_EVENT_NAME}" = "push" ] || [ "${GITHUB_EVENT_NAME}" = "schedule" ] || [ "${INPUT_PUSH_IMAGES:-false}" = "true" ]; then
+            PUSH_IMAGES=true
+          fi
+
+          if [ "${PUSH_IMAGES}" != "true" ] && [[ "${TARGETPLATFORM}" == *,* ]]; then
+            echo "Multi-platform builds require push_images=true." >&2
+            exit 1
+          fi
+
+          IMAGE_NAME="${REGISTRY_PREFIX}/${PROJECT_NAME}"
+          BASE_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}"
+          JUPYTER_BASE_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-jupyter-${JUPYTER_VERSION}"
+          JUPYTER_CUDA_PYTORCH_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-jupyter-${JUPYTER_VERSION}-cuda-${CUDA_VERSION}-pytorch-${PYTORCH_VERSION}"
+          CODESERVER_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-code-server-${CODESERVER_VERSION}"
+
+          REGISTRY_HOST="${REGISTRY_PREFIX%%/*}"
+          if [[ "${REGISTRY_HOST}" != *.* && "${REGISTRY_HOST}" != *:* && "${REGISTRY_HOST}" != "localhost" ]]; then
+            REGISTRY_HOST=docker.io
+          fi
+
+          {
+            echo "IMAGE=${IMAGE}"
+            echo "PUSH_IMAGES=${PUSH_IMAGES}"
+            echo "REGISTRY_PREFIX=${REGISTRY_PREFIX}"
+            echo "REGISTRY_HOST=${REGISTRY_HOST}"
+            echo "TARGETPLATFORM=${TARGETPLATFORM}"
+            echo "IMAGE_NAME=${IMAGE_NAME}"
+            echo "BASE_IMAGE=${BASE_IMAGE}"
+            echo "BASE_IMAGE_VERSION=${BASE_IMAGE_VERSION}"
+            echo "JUPYTER_VERSION=${JUPYTER_VERSION}"
+            echo "JUPYTERLAB_VERSION=${JUPYTERLAB_VERSION}"
+            echo "NODE_MAJOR_VERSION=${NODE_MAJOR_VERSION}"
+            echo "MINIFORGE_VERSION=${MINIFORGE_VERSION}"
+            echo "PIP_VERSION=${PIP_VERSION}"
+            echo "PYTHON_VERSION=${PYTHON_VERSION}"
+            echo "CUDA_VERSION=${CUDA_VERSION}"
+            echo "PYTORCH_VERSION=${PYTORCH_VERSION}"
+            echo "TORCHAUDIO_VERSION=${TORCHAUDIO_VERSION}"
+            echo "TORCHVISION_VERSION=${TORCHVISION_VERSION}"
+            echo "CODESERVER_VERSION=${CODESERVER_VERSION}"
+            echo "BASE_IMAGE_TAG=${BASE_IMAGE_TAG}"
+            echo "JUPYTER_BASE_IMAGE_TAG=${JUPYTER_BASE_IMAGE_TAG}"
+            echo "JUPYTER_CUDA_PYTORCH_IMAGE_TAG=${JUPYTER_CUDA_PYTORCH_IMAGE_TAG}"
+            echo "CODESERVER_IMAGE_TAG=${CODESERVER_IMAGE_TAG}"
+          } >> "${GITHUB_ENV}"
+
+          {
+            echo "push_images=${PUSH_IMAGES}"
+            echo "registry_prefix=${REGISTRY_PREFIX}"
+            echo "registry_host=${REGISTRY_HOST}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Login to Docker Hub
+        if: steps.resolve.outputs.push_images == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build selected images
+        run: |
+          set -euo pipefail
+
+          if [ "${PUSH_IMAGES}" = "true" ]; then
+            OUTPUT_ARGS=(--push)
+          else
+            OUTPUT_ARGS=(--load)
+          fi
+
+          build_base() {
+            docker buildx build \
+              --platform "${TARGETPLATFORM}" \
+              --file kubeflow/base/Dockerfile \
+              --tag "${IMAGE_NAME}:${BASE_IMAGE_TAG}" \
+              --tag "${IMAGE_NAME}:latest-base" \
+              --cache-from "type=gha,scope=kubeflow-base" \
+              --cache-to "type=gha,mode=max,scope=kubeflow-base" \
+              "${OUTPUT_ARGS[@]}" \
+              --build-arg "TARGETPLATFORM=${TARGETPLATFORM}" \
+              --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
+              --build-arg "BASE_IMAGE_VERSION=${BASE_IMAGE_VERSION}" \
+              --build-arg "MINIFORGE_VERSION=${MINIFORGE_VERSION}" \
+              --build-arg "PIP_VERSION=${PIP_VERSION}" \
+              --build-arg "PYTHON_VERSION=${PYTHON_VERSION}" \
+              kubeflow/base
+          }
+
+          build_jupyter() {
+            docker buildx build \
+              --platform "${TARGETPLATFORM}" \
+              --file kubeflow/jupyter/Dockerfile \
+              --tag "${IMAGE_NAME}:${JUPYTER_BASE_IMAGE_TAG}" \
+              --tag "${IMAGE_NAME}:latest-jupyter-base" \
+              --cache-from "type=gha,scope=kubeflow-jupyter" \
+              --cache-to "type=gha,mode=max,scope=kubeflow-jupyter" \
+              "${OUTPUT_ARGS[@]}" \
+              --build-arg "TARGETPLATFORM=${TARGETPLATFORM}" \
+              --build-arg "BASE_IMAGE_TAG=${BASE_IMAGE_TAG}" \
+              --build-arg "PROJECT_NAME=${PROJECT_NAME}" \
+              --build-arg "REGISTRY_PREFIX=${REGISTRY_PREFIX}" \
+              --build-arg "JUPYTER_VERSION=${JUPYTER_VERSION}" \
+              --build-arg "JUPYTERLAB_VERSION=${JUPYTERLAB_VERSION}" \
+              --build-arg "NODE_MAJOR_VERSION=${NODE_MAJOR_VERSION}" \
+              --build-arg "MINIFORGE_VERSION=${MINIFORGE_VERSION}" \
+              --build-arg "PIP_VERSION=${PIP_VERSION}" \
+              --build-arg "PYTHON_VERSION=${PYTHON_VERSION}" \
+              kubeflow/jupyter
+          }
+
+          build_jupyter_cuda_pytorch() {
+            docker buildx build \
+              --platform "${TARGETPLATFORM}" \
+              --file kubeflow/jupyter-cuda-torch/Dockerfile \
+              --tag "${IMAGE_NAME}:${JUPYTER_CUDA_PYTORCH_IMAGE_TAG}" \
+              --tag "${IMAGE_NAME}:latest-jupyter-cuda-pytorch" \
+              --cache-from "type=gha,scope=kubeflow-jupyter-cuda-pytorch" \
+              --cache-to "type=gha,mode=max,scope=kubeflow-jupyter-cuda-pytorch" \
+              "${OUTPUT_ARGS[@]}" \
+              --build-arg "TARGETPLATFORM=${TARGETPLATFORM}" \
+              --build-arg "BASE_IMAGE_TAG=${JUPYTER_BASE_IMAGE_TAG}" \
+              --build-arg "PROJECT_NAME=${PROJECT_NAME}" \
+              --build-arg "REGISTRY_PREFIX=${REGISTRY_PREFIX}" \
+              --build-arg "CUDA_VERSION=${CUDA_VERSION}" \
+              --build-arg "PYTORCH_VERSION=${PYTORCH_VERSION}" \
+              --build-arg "TORCHAUDIO_VERSION=${TORCHAUDIO_VERSION}" \
+              --build-arg "TORCHVISION_VERSION=${TORCHVISION_VERSION}" \
+              kubeflow/jupyter-cuda-torch
+          }
+
+          build_code_server() {
+            docker buildx build \
+              --platform "${TARGETPLATFORM}" \
+              --file kubeflow/code-server/Dockerfile \
+              --tag "${IMAGE_NAME}:${CODESERVER_IMAGE_TAG}" \
+              --tag "${IMAGE_NAME}:latest-code-server" \
+              --cache-from "type=gha,scope=kubeflow-code-server" \
+              --cache-to "type=gha,mode=max,scope=kubeflow-code-server" \
+              "${OUTPUT_ARGS[@]}" \
+              --build-arg "TARGETPLATFORM=${TARGETPLATFORM}" \
+              --build-arg "BASE_IMAGE_TAG=${BASE_IMAGE_TAG}" \
+              --build-arg "PROJECT_NAME=${PROJECT_NAME}" \
+              --build-arg "REGISTRY_PREFIX=${REGISTRY_PREFIX}" \
+              --build-arg "CUDA_VERSION=${CUDA_VERSION}" \
+              --build-arg "PYTORCH_VERSION=${PYTORCH_VERSION}" \
+              --build-arg "TORCHAUDIO_VERSION=${TORCHAUDIO_VERSION}" \
+              --build-arg "TORCHVISION_VERSION=${TORCHVISION_VERSION}" \
+              --build-arg "CODESERVER_VERSION=${CODESERVER_VERSION}" \
+              kubeflow/code-server
+          }
+
+          case "${IMAGE}" in
+            all)
+              build_base
+              build_jupyter
+              build_jupyter_cuda_pytorch
+              build_code_server
+              ;;
+            base)
+              build_base
+              ;;
+            jupyter)
+              build_base
+              build_jupyter
+              ;;
+            jupyter-cuda-pytorch)
+              build_base
+              build_jupyter
+              build_jupyter_cuda_pytorch
+              ;;
+            code-server)
+              build_base
+              build_code_server
+              ;;
+            *)
+              echo "Unknown image set: ${IMAGE}" >&2
+              exit 1
+              ;;
+          esac

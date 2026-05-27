@@ -1,0 +1,117 @@
+name: Update Kubeflow Versions
+
+on:
+  workflow_dispatch:
+    inputs:
+      code_server_version:
+        description: Use "latest", "keep", or a concrete version like 4.103.2.
+        required: true
+        default: latest
+        type: string
+      jupyter_version:
+        description: Optional Jupyter Notebook version override.
+        required: false
+        default: ""
+        type: string
+      jupyterlab_version:
+        description: Optional JupyterLab version override.
+        required: false
+        default: ""
+        type: string
+      python_version:
+        description: Optional Python version override.
+        required: false
+        default: ""
+        type: string
+      cuda_version:
+        description: Optional CUDA version override.
+        required: false
+        default: ""
+        type: string
+      pytorch_version:
+        description: Optional PyTorch version override.
+        required: false
+        default: ""
+        type: string
+      torchaudio_version:
+        description: Optional torchaudio version override.
+        required: false
+        default: ""
+        type: string
+      torchvision_version:
+        description: Optional torchvision version override.
+        required: false
+        default: ""
+        type: string
+  schedule:
+    - cron: "7 2 * * 1"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: update-kubeflow-versions
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    env:
+      VERSION_FILE: versions/kubeflow.env
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update version file
+        env:
+          INPUT_CODE_SERVER_VERSION: ${{ inputs.code_server_version }}
+          INPUT_JUPYTER_VERSION: ${{ inputs.jupyter_version }}
+          INPUT_JUPYTERLAB_VERSION: ${{ inputs.jupyterlab_version }}
+          INPUT_PYTHON_VERSION: ${{ inputs.python_version }}
+          INPUT_CUDA_VERSION: ${{ inputs.cuda_version }}
+          INPUT_PYTORCH_VERSION: ${{ inputs.pytorch_version }}
+          INPUT_TORCHAUDIO_VERSION: ${{ inputs.torchaudio_version }}
+          INPUT_TORCHVISION_VERSION: ${{ inputs.torchvision_version }}
+        run: |
+          set -euo pipefail
+
+          update_var() {
+            var_name="$1"
+            var_value="$2"
+            if [ -n "${var_value}" ]; then
+              sed -i "s|^${var_name}=.*|${var_name}=${var_value}|" "${VERSION_FILE}"
+            fi
+          }
+
+          code_server_version="${INPUT_CODE_SERVER_VERSION:-latest}"
+          if [ "${GITHUB_EVENT_NAME}" = "schedule" ] || [ "${code_server_version}" = "latest" ]; then
+            latest_tag="$(curl -fsSL https://api.github.com/repos/coder/code-server/releases/latest | jq -r '.tag_name')"
+            code_server_version="${latest_tag#v}"
+          fi
+
+          if [ "${code_server_version}" != "keep" ]; then
+            update_var CODESERVER_VERSION "${code_server_version}"
+          fi
+
+          update_var JUPYTER_VERSION "${INPUT_JUPYTER_VERSION:-}"
+          update_var JUPYTERLAB_VERSION "${INPUT_JUPYTERLAB_VERSION:-}"
+          update_var PYTHON_VERSION "${INPUT_PYTHON_VERSION:-}"
+          update_var CUDA_VERSION "${INPUT_CUDA_VERSION:-}"
+          update_var PYTORCH_VERSION "${INPUT_PYTORCH_VERSION:-}"
+          update_var TORCHAUDIO_VERSION "${INPUT_TORCHAUDIO_VERSION:-}"
+          update_var TORCHVISION_VERSION "${INPUT_TORCHVISION_VERSION:-}"
+
+          cat "${VERSION_FILE}"
+
+      - name: Open pull request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: automation/update-kubeflow-versions
+          commit-message: "chore: update kubeflow image versions"
+          title: "chore: update Kubeflow image versions"
+          body: |
+            Updates `versions/kubeflow.env`.
+
+            After this PR is merged, `.github/workflows/kubeflow-images.yml`
+            will build the affected Kubeflow images from the updated pins.
