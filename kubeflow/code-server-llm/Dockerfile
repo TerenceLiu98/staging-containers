@@ -1,7 +1,10 @@
-ARG TARGETPLATFORM
-ARG LLM_BASE_IMAGE
+ARG TARGETPLATFORM=linux/amd64
+ARG LLM_BASE_IMAGE=nvidia/cuda:13.0.3-devel-ubuntu24.04
 FROM --platform=$TARGETPLATFORM ${LLM_BASE_IMAGE}
 
+ARG TARGETPLATFORM
+ARG TARGETARCH
+ARG LLM_BASE_IMAGE
 ARG NB_USER=jovyan
 ARG NB_UID=1000
 ARG NB_GID=0
@@ -108,12 +111,12 @@ ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
 
-RUN ARCH="$(echo "$TARGETPLATFORM" | cut -d '/' -f2)" \
+RUN ARCH="${TARGETARCH:-$(dpkg --print-architecture)}" \
  && case "$ARCH" in \
-      amd64) S6_ARCH="x86_64" ;; \
-      arm64) S6_ARCH="aarch64" ;; \
+      amd64|x86_64) S6_ARCH="x86_64" ;; \
+      arm64|aarch64) S6_ARCH="aarch64" ;; \
       ppc64le) S6_ARCH="ppc64le" ;; \
-      *) echo "Unsupported architecture: ${TARGETPLATFORM}"; exit 1 ;; \
+      *) echo "Unsupported architecture: ${ARCH} (${TARGETPLATFORM})"; exit 1 ;; \
     esac \
  && curl -fsSL "https://github.com/just-containers/s6-overlay/releases/download/${S6_VERSION}/s6-overlay-noarch.tar.xz" -o /tmp/s6-overlay-noarch.tar.xz \
  && curl -fsSL "https://github.com/just-containers/s6-overlay/releases/download/${S6_VERSION}/s6-overlay-${S6_ARCH}.tar.xz" -o /tmp/s6-overlay-${S6_ARCH}.tar.xz \
@@ -121,8 +124,12 @@ RUN ARCH="$(echo "$TARGETPLATFORM" | cut -d '/' -f2)" \
  && tar -C / -Jxpf /tmp/s6-overlay-${S6_ARCH}.tar.xz \
  && rm -f /tmp/s6-overlay-noarch.tar.xz /tmp/s6-overlay-${S6_ARCH}.tar.xz
 
-RUN TARGETARCH="$(echo "$TARGETPLATFORM" | cut -d '/' -f2)" \
- && curl -fsSL "https://github.com/coder/code-server/releases/download/v${CODESERVER_VERSION}/code-server_${CODESERVER_VERSION}_${TARGETARCH}.deb" -o /tmp/code-server.deb \
+RUN ARCH="${TARGETARCH:-$(dpkg --print-architecture)}" \
+ && case "$ARCH" in \
+      amd64|arm64) CODESERVER_ARCH="$ARCH" ;; \
+      *) echo "Unsupported code-server deb architecture: ${ARCH} (${TARGETPLATFORM})"; exit 1 ;; \
+    esac \
+ && curl -fsSL "https://github.com/coder/code-server/releases/download/v${CODESERVER_VERSION}/code-server_${CODESERVER_VERSION}_${CODESERVER_ARCH}.deb" -o /tmp/code-server.deb \
  && dpkg -i /tmp/code-server.deb \
  && rm -f /tmp/code-server.deb
 
