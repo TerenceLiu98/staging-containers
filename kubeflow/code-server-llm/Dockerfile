@@ -38,7 +38,8 @@ ENV PERSISTENT_DIR=/home/${NB_USER}/srv
 ENV SHELL=/bin/bash
 ENV VIRTUAL_ENV=/opt/llm
 ENV UV_PYTHON_INSTALL_DIR=/opt/uv/python
-ENV UV_LINK_MODE=copy
+ENV UV_CACHE_DIR=/opt/uv/cache
+ENV UV_LINK_MODE=hardlink
 ENV PATH=/opt/llm/bin:/home/${NB_USER}/.local/bin:/usr/local/bin:${PATH}
 ENV CUDA_HOME=/usr/local/cuda
 ENV HF_HOME=/home/${NB_USER}/srv/.cache/huggingface
@@ -157,9 +158,10 @@ RUN if getent passwd "${NB_UID}" >/dev/null; then \
     "${HOME_TMP}" \
     "${PERSISTENT_DIR}" \
     "${UV_PYTHON_INSTALL_DIR}" \
+    "${UV_CACHE_DIR}" \
     "${VIRTUAL_ENV}" \
- && chmod 2775 "${HOME}" "${HOME_TMP}" "${PERSISTENT_DIR}" "${UV_PYTHON_INSTALL_DIR}" "${VIRTUAL_ENV}" \
- && chown -R "${NB_UID}:${NB_GID}" "${HOME}" "${HOME_TMP}" "${PERSISTENT_DIR}" "${UV_PYTHON_INSTALL_DIR}" "${VIRTUAL_ENV}"
+ && chmod 2775 "${HOME}" "${HOME_TMP}" "${PERSISTENT_DIR}" "${UV_PYTHON_INSTALL_DIR}" "${UV_CACHE_DIR}" "${VIRTUAL_ENV}" \
+ && chown -R "${NB_UID}:${NB_GID}" "${HOME}" "${HOME_TMP}" "${PERSISTENT_DIR}" "${UV_PYTHON_INSTALL_DIR}" "${UV_CACHE_DIR}" "${VIRTUAL_ENV}"
 
 RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" -o /tmp/uv-install.sh \
  && env UV_INSTALL_DIR=/usr/local/bin sh /tmp/uv-install.sh \
@@ -172,9 +174,11 @@ RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" -o /tmp/uv-instal
     "torch==${PYTORCH_VERSION}" \
     "torchaudio==${TORCHAUDIO_VERSION}" \
     "torchvision==${TORCHVISION_VERSION}" \
+ && uv cache clean \
  && uv pip install --python "${VIRTUAL_ENV}/bin/python" \
     --extra-index-url "https://download.pytorch.org/whl/${LLM_PYTORCH_CUDA_INDEX}" \
     "xformers==${XFORMERS_VERSION}" \
+ && uv cache clean \
  && uv pip install --python "${VIRTUAL_ENV}/bin/python" \
     "vllm==${VLLM_VERSION}" \
     "deepspeed==${DEEPSPEED_VERSION}" \
@@ -195,7 +199,8 @@ RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" -o /tmp/uv-instal
     "uvicorn[standard]" \
     "jupyter" \
     "ipykernel" \
- && chown -R "${NB_UID}:${NB_GID}" "${UV_PYTHON_INSTALL_DIR}" "${VIRTUAL_ENV}"
+ && uv cache clean \
+ && chown -R "${NB_UID}:${NB_GID}" "${UV_PYTHON_INSTALL_DIR}" "${UV_CACHE_DIR}" "${VIRTUAL_ENV}"
 
 COPY --chown=${NB_USER}:${NB_GID} --chmod=755 s6/ /etc
 
