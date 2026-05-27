@@ -133,13 +133,21 @@ RUN ARCH="${TARGETARCH:-$(dpkg --print-architecture)}" \
  && dpkg -i /tmp/code-server.deb \
  && rm -f /tmp/code-server.deb
 
-RUN useradd -M -N \
-    --shell /bin/bash \
-    --home "${HOME}" \
-    --uid "${NB_UID}" \
-    --gid "${NB_GID}" \
-    --groups "${USERS_GID}" "${NB_USER}" \
- && usermod -a -G sudo "${NB_USER}" \
+RUN if getent passwd "${NB_UID}" >/dev/null; then \
+      EXISTING_USER="$(getent passwd "${NB_UID}" | cut -d: -f1)"; \
+      if [ "${EXISTING_USER}" != "${NB_USER}" ]; then \
+        usermod --login "${NB_USER}" "${EXISTING_USER}"; \
+      fi; \
+      usermod --home "${HOME}" --shell /bin/bash --gid "${NB_GID}" "${NB_USER}"; \
+      usermod --append --groups "${USERS_GID},sudo" "${NB_USER}"; \
+    else \
+      useradd -M -N \
+        --shell /bin/bash \
+        --home "${HOME}" \
+        --uid "${NB_UID}" \
+        --gid "${NB_GID}" \
+        --groups "${USERS_GID},sudo" "${NB_USER}"; \
+    fi \
  && echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers \
  && mkdir -p "${HOME}" "${HOME_TMP}" "${PERSISTENT_DIR}" "${UV_PYTHON_INSTALL_DIR}" "${VIRTUAL_ENV}" \
  && chmod 2775 "${HOME}" "${HOME_TMP}" "${PERSISTENT_DIR}" "${UV_PYTHON_INSTALL_DIR}" "${VIRTUAL_ENV}" \
