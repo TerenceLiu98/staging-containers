@@ -96,7 +96,9 @@ on:
       - master
     paths:
       - .github/workflows/kubeflow-images.yml
+      - README.md
       - kubeflow/**
+      - scripts/**
       - versions/kubeflow.env
       - versions/code-server-llm-matrix.json
   schedule:
