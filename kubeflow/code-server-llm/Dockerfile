@@ -153,7 +153,9 @@ RUN if getent passwd "${NB_UID}" >/dev/null; then \
  && chmod 2775 "${HOME}" "${HOME_TMP}" "${PERSISTENT_DIR}" "${UV_PYTHON_INSTALL_DIR}" "${VIRTUAL_ENV}" \
  && chown -R "${NB_USER}:${NB_GID}" "${HOME}" "${HOME_TMP}" "${PERSISTENT_DIR}" "${UV_PYTHON_INSTALL_DIR}" "${VIRTUAL_ENV}"
 
-RUN python3 -m pip install --no-cache-dir --upgrade "uv==${UV_VERSION}" \
+RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" -o /tmp/uv-install.sh \
+ && env UV_INSTALL_DIR=/usr/local/bin sh /tmp/uv-install.sh \
+ && rm -f /tmp/uv-install.sh \
  && uv python install "${PYTHON_VERSION}" \
  && uv venv "${VIRTUAL_ENV}" --python "${PYTHON_VERSION}" \
  && uv pip install --python "${VIRTUAL_ENV}/bin/python" --upgrade pip setuptools wheel packaging \
