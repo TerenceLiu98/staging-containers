@@ -47,6 +47,8 @@ GitHub Actions:
   `versions/code-server-llm-matrix.json`.
 - CUDA and PyTorch remain explicit pins because those versions must stay
   compatible with each other.
+- If a failed GitHub Actions run used an old commit, start a new run from the
+  latest `master` instead of re-running the old job.
 
 ## Kubeflow VS Code Images
 
