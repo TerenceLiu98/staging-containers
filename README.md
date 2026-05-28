@@ -52,7 +52,9 @@ GitHub Actions:
 
 ## Kubeflow VS Code Images
 
-The standard `kubeflow/code-server` image is the lightweight VS Code image.
+The standard `kubeflow/code-server` image is the lightweight VS Code image. It
+does not use conda; it uses `uv` and installs its default Python environment
+under `/opt/code-server`.
 
 The `kubeflow/code-server-llm` image is the all-in-one LLM development image. It
 does not use conda. Its CUDA base image is pinned by `LLM_BASE_IMAGE` in

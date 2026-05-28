@@ -116,20 +116,21 @@ push-jupyter-cuda-pytorch:
 	$(CONTAINER_CLI) push $(IMAGE_NAME):$(JUPYTER_CUDA_PYTORCH_IMAGE_TAG)
 	$(CONTAINER_CLI) push $(IMAGE_NAME):latest-jupyter-cuda-pytorch
 
-build-code-server: build-base
+build-code-server:
 	$(CONTAINER_CLI) build \
 		-f code-server/Dockerfile \
 		-t $(IMAGE_NAME):$(CODESERVER_IMAGE_TAG) \
 		--build-arg TARGETPLATFORM=$(TARGETPLATFORM) \
-		--build-arg BASE_IMAGE_TAG=$(BASE_IMAGE_TAG) \
-		--build-arg PROJECT_NAME=$(PROJECT_NAME) \
-		--build-arg REGISTRY_PREFIX=$(REGISTRY_PREFIX) \
+		--build-arg BASE_IMAGE=$(BASE_IMAGE) \
+		--build-arg BASE_IMAGE_VERSION=$(BASE_IMAGE_VERSION) \
 		--build-arg CUDA_VERSION=$(CUDA_VERSION) \
+		--build-arg CODESERVER_VERSION=$(CODESERVER_VERSION) \
+		--build-arg UV_VERSION=$(UV_VERSION) \
+		--build-arg PYTHON_VERSION=$(PYTHON_VERSION) \
 		--build-arg PYTORCH_VERSION=$(PYTORCH_VERSION) \
 		--build-arg TORCHAUDIO_VERSION=$(TORCHAUDIO_VERSION) \
 		--build-arg TORCHVISION_VERSION=$(TORCHVISION_VERSION) \
 		--build-arg PYTORCH_CUDA_INDEX=$(PYTORCH_CUDA_INDEX) \
-		--build-arg CODESERVER_VERSION=$(CODESERVER_VERSION) \
 		code-server
 	$(CONTAINER_CLI) tag $(IMAGE_NAME):$(CODESERVER_IMAGE_TAG) $(IMAGE_NAME):latest-code-server
 

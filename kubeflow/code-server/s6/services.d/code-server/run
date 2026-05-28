@@ -8,7 +8,6 @@ mkdir -p "${XDG_RUNTIME_DIR}"
 chmod 700 "${XDG_RUNTIME_DIR}"
 
 /etc/init-persistent-home
-rm -rf $HOME/.conda && cp -r -T --update=none ${HOME_TMP}/.conda "$PERSISTENT_DIR/.conda"
 
 if [ "${DISABLE_COPILOT_EXTENSIONS:-true}" = "true" ] && [ -d "${HOME}/.local/share/code-server/extensions" ]; then
   find "${HOME}/.local/share/code-server/extensions" -maxdepth 1 -mindepth 1 \
