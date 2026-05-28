@@ -136,8 +136,11 @@ RUN mkdir -p /home/${USER_NAME}/.local/share/code-server/User && \
     echo '  "editor.fontLigatures": true,' >> /home/${USER_NAME}/.local/share/code-server/User/settings.json && \
     echo '  "workbench.colorTheme": "Atom One Dark",' >> /home/${USER_NAME}/.local/share/code-server/User/settings.json && \
     echo '  "workbench.iconTheme": "vscode-great-icons",' >> /home/${USER_NAME}/.local/share/code-server/User/settings.json && \
-    echo '  "terminal.integrated.shell.linux": "/bin/zsh"' >> /home/${USER_NAME}/.local/share/code-server/User/settings.json && \
-    echo '  "editor.minimap.enabled": false' >> /home/${USER_NAME}/.local/share/code-server/User/settings.json && \
+    echo '  "terminal.integrated.shell.linux": "/bin/zsh",' >> /home/${USER_NAME}/.local/share/code-server/User/settings.json && \
+    echo '  "editor.minimap.enabled": false,' >> /home/${USER_NAME}/.local/share/code-server/User/settings.json && \
+    echo '  "chat.extensionUnification.enabled": false,' >> /home/${USER_NAME}/.local/share/code-server/User/settings.json && \
+    echo '  "chat.disableAIFeatures": true,' >> /home/${USER_NAME}/.local/share/code-server/User/settings.json && \
+    echo '  "terminal.integrated.tabs.allowAgentCliTitle": false' >> /home/${USER_NAME}/.local/share/code-server/User/settings.json && \
     echo '}' >> /home/${USER_NAME}/.local/share/code-server/User/settings.json 
 
 

@@ -227,6 +227,15 @@ RUN /usr/bin/code-server --install-extension ms-python.python \
       /usr/bin/code-server --install-extension Anthropic.claude-code; \
     fi
 
+RUN mkdir -p "${HOME}/.local/share/code-server/User" \
+ && printf '%s\n' \
+    '{' \
+    '  "chat.extensionUnification.enabled": false,' \
+    '  "chat.disableAIFeatures": true,' \
+    '  "terminal.integrated.tabs.allowAgentCliTitle": false' \
+    '}' \
+    > "${HOME}/.local/share/code-server/User/settings.json"
+
 RUN cp -p -r -T "${HOME}" "${HOME_TMP}" \
  && chmod -R g=u "${HOME_TMP}"
 
