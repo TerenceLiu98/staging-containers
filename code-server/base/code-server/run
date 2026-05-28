@@ -5,6 +5,12 @@
 # to avoid this, we set the runtime directory to a path that is NOT a persistent volume.
 
 echo "INFO: starting code-server..."
+if [ "${DISABLE_COPILOT_EXTENSIONS:-true}" = "true" ] && [ -d "${HOME}/.local/share/code-server/extensions" ]; then
+  find "${HOME}/.local/share/code-server/extensions" -maxdepth 1 -mindepth 1 \
+    \( -iname "github.copilot*" -o -iname "github.copilot-chat*" \) \
+    -exec rm -rf {} +
+fi
+
 exec 2>&1
 exec /usr/bin/code-server \
   --bind-addr 0.0.0.0:8888 \
@@ -12,8 +18,6 @@ exec /usr/bin/code-server \
   --disable-update-check \
   --disable-workspace-trust \
   --disable-getting-started-override \
-  --disable-extension GitHub.copilot \
-  --disable-extension GitHub.copilot-chat \
   --auth none \
   --trusted-origins "*" \
   "${HOME}"

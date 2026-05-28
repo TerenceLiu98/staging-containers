@@ -65,6 +65,10 @@ The image also includes system tools commonly needed for GPU/LLM development:
 `net-tools`, `dnsutils`, `pciutils`, `numactl`, `procps`, `psmisc`, `git-lfs`,
 OpenMPI development packages, `cmake`, and `ninja-build`.
 
+For Kubeflow or JupyterHub, mount each user's PVC at `/home/jovyan/srv`, not at
+`/home/jovyan`. The image keeps code-server configuration and default home files
+under `/home/jovyan`, while `/home/jovyan/srv` is the persistent workspace.
+
 `code-server-llm` is built as a version matrix from
 `versions/code-server-llm-matrix.json`. Each entry is a compatible tuple of CUDA
 wheel index, NVIDIA CUDA base image, PyTorch, vLLM, and xFormers. GitHub Actions

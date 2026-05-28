@@ -8,8 +8,14 @@ mkdir -p "${XDG_RUNTIME_DIR}"
 chmod 700 "${XDG_RUNTIME_DIR}"
 
 echo "INFO: Copying contents of '$HOME_TMP' to '$HOME'..."
-cp -n -r -T "$HOME_TMP" "$HOME"
-rm -rf $HOME/.conda && cp -n -r -T ${HOME_TMP}/.conda "$PERSISTENT_DIR/.conda"
+cp -r -T --update=none "$HOME_TMP" "$HOME"
+rm -rf $HOME/.conda && cp -r -T --update=none ${HOME_TMP}/.conda "$PERSISTENT_DIR/.conda"
+
+if [ "${DISABLE_COPILOT_EXTENSIONS:-true}" = "true" ] && [ -d "${HOME}/.local/share/code-server/extensions" ]; then
+  find "${HOME}/.local/share/code-server/extensions" -maxdepth 1 -mindepth 1 \
+    \( -iname "github.copilot*" -o -iname "github.copilot-chat*" \) \
+    -exec rm -rf {} +
+fi
 
 cd "${PERSISTENT_DIR}" || { echo "ERROR: failed to cd to ${PERSISTENT_DIR}"; exit 1; }
 echo "INFO: starting code-server..."
@@ -20,8 +26,6 @@ exec /usr/bin/code-server \
   --disable-update-check \
   --disable-workspace-trust \
   --disable-getting-started-override \
-  --disable-extension GitHub.copilot \
-  --disable-extension GitHub.copilot-chat \
   --auth none \
   --trusted-origins "*" \
   "${PERSISTENT_DIR}"
