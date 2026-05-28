@@ -4,8 +4,7 @@ export XDG_RUNTIME_DIR="/tmp/runtime-${NB_USER}"
 mkdir -p "${XDG_RUNTIME_DIR}"
 chmod 700 "${XDG_RUNTIME_DIR}"
 
-echo "INFO: Copying contents of '$HOME_TMP' to '$HOME'..."
-cp -r -T --update=none "$HOME_TMP" "$HOME"
+/etc/init-persistent-home
 mkdir -p "${PERSISTENT_DIR}" "${TORCH_HOME}" "${VLLM_CACHE_ROOT}"
 
 if [ "${DISABLE_COPILOT_EXTENSIONS:-true}" = "true" ] && [ -d "${HOME}/.local/share/code-server/extensions" ]; then

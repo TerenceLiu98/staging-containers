@@ -68,6 +68,17 @@ OpenMPI development packages, `cmake`, and `ninja-build`.
 For Kubeflow or JupyterHub, mount each user's PVC at `/home/jovyan/srv`, not at
 `/home/jovyan`. The image keeps code-server configuration and default home files
 under `/home/jovyan`, while `/home/jovyan/srv` is the persistent workspace.
+At startup, the image initializes persistent user state under
+`/home/jovyan/srv/.state` and links selected directories back into the home
+directory:
+
+```text
+/home/jovyan/.local/share/code-server/User       -> /home/jovyan/srv/.state/code-server/User
+/home/jovyan/.local/share/code-server/extensions -> /home/jovyan/srv/.state/code-server/extensions
+/home/jovyan/.config/code-server                 -> /home/jovyan/srv/.state/code-server/config
+/home/jovyan/.claude                             -> /home/jovyan/srv/.state/claude
+/home/jovyan/.codex                              -> /home/jovyan/srv/.state/codex
+```
 
 `code-server-llm` is built as a version matrix from
 `versions/code-server-llm-matrix.json`. Each entry is a compatible tuple of CUDA
