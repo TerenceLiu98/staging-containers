@@ -6,6 +6,8 @@ FROM $BASE
 ARG USER_NAME=nebula
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
+ARG INSTALL_OPENAI_CHATGPT_EXTENSION=false
+ARG INSTALL_CLAUDE_CODE_EXTENSION=false
 
 RUN pacman -Syu --noconfirm \
     curl \
@@ -112,8 +114,12 @@ RUN /usr/bin/code-server --install-extension eamodio.gitlens && \
     /usr/bin/code-server --install-extension ms-python.python && \
     /usr/bin/code-server --install-extension antfu.browse-lite && \
     /usr/bin/code-server --install-extension ms-toolsai.jupyter && \
-    /usr/bin/code-server --install-extension openai.chatgpt && \
-    /usr/bin/code-server --install-extension Anthropic.claude-code && \
+    if [ "${INSTALL_OPENAI_CHATGPT_EXTENSION}" = "true" ]; then \
+      /usr/bin/code-server --install-extension openai.chatgpt; \
+    fi && \
+    if [ "${INSTALL_CLAUDE_CODE_EXTENSION}" = "true" ]; then \
+      /usr/bin/code-server --install-extension Anthropic.claude-code; \
+    fi && \
     /usr/bin/code-server --install-extension hediet.vscode-drawio && \
     /usr/bin/code-server --install-extension alexcvzz.vscode-sqlite && \
     /usr/bin/code-server --install-extension akamud.vscode-theme-onedark && \
@@ -172,4 +178,5 @@ EXPOSE 8888
 
 CMD ["/usr/bin/code-server", "--bind-addr", "0.0.0.0:8888", "--disable-telemetry", \
         "--disable-update-check", "--disable-workspace-trust", "--disable-getting-started-override", \
+        "--disable-extension", "GitHub.copilot", "--disable-extension", "GitHub.copilot-chat", \
         "--auth", "none", "--trusted-origins", "*", "/home/nebula/srv"]

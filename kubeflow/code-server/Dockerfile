@@ -11,6 +11,8 @@ ARG PYTORCH_VERSION
 ARG TORCHAUDIO_VERSION
 ARG TORCHVISION_VERSION
 ARG PYTORCH_CUDA_INDEX=cu124
+ARG INSTALL_OPENAI_CHATGPT_EXTENSION=false
+ARG INSTALL_CLAUDE_CODE_EXTENSION=false
 
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
@@ -58,8 +60,12 @@ RUN /usr/bin/code-server --install-extension ms-python.python \
     && /usr/bin/code-server --install-extension emmanuelbeziat.vscode-great-icons \
     && /usr/bin/code-server --install-extension alexcvzz.vscode-sqlite \
     && /usr/bin/code-server --install-extension eamodio.gitlens \
-    && /usr/bin/code-server --install-extension openai.chatgpt \
-    && /usr/bin/code-server --install-extension Anthropic.claude-code
+    && if [ "${INSTALL_OPENAI_CHATGPT_EXTENSION}" = "true" ]; then \
+         /usr/bin/code-server --install-extension openai.chatgpt; \
+       fi \
+    && if [ "${INSTALL_CLAUDE_CODE_EXTENSION}" = "true" ]; then \
+         /usr/bin/code-server --install-extension Anthropic.claude-code; \
+       fi
 
 USER $NB_UID
 

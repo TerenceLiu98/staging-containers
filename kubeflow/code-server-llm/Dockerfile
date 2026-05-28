@@ -27,6 +27,8 @@ ARG PEFT_VERSION
 ARG TRL_VERSION
 ARG BITSANDBYTES_VERSION
 ARG SENTENCEPIECE_VERSION
+ARG INSTALL_OPENAI_CHATGPT_EXTENSION=false
+ARG INSTALL_CLAUDE_CODE_EXTENSION=false
 
 ENV NB_USER=${NB_USER}
 ENV NB_UID=${NB_UID}
@@ -217,8 +219,12 @@ RUN /usr/bin/code-server --install-extension ms-python.python \
  && /usr/bin/code-server --install-extension emmanuelbeziat.vscode-great-icons \
  && /usr/bin/code-server --install-extension alexcvzz.vscode-sqlite \
  && /usr/bin/code-server --install-extension eamodio.gitlens \
- && /usr/bin/code-server --install-extension openai.chatgpt \
- && /usr/bin/code-server --install-extension Anthropic.claude-code
+ && if [ "${INSTALL_OPENAI_CHATGPT_EXTENSION}" = "true" ]; then \
+      /usr/bin/code-server --install-extension openai.chatgpt; \
+    fi \
+ && if [ "${INSTALL_CLAUDE_CODE_EXTENSION}" = "true" ]; then \
+      /usr/bin/code-server --install-extension Anthropic.claude-code; \
+    fi
 
 RUN cp -p -r -T "${HOME}" "${HOME_TMP}" \
  && chmod -R g=u "${HOME_TMP}"

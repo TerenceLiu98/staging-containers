@@ -20,6 +20,8 @@ exec /usr/bin/code-server \
   --disable-update-check \
   --disable-workspace-trust \
   --disable-getting-started-override \
+  --disable-extension GitHub.copilot \
+  --disable-extension GitHub.copilot-chat \
   --auth none \
   --trusted-origins "*" \
   "${PERSISTENT_DIR}"
