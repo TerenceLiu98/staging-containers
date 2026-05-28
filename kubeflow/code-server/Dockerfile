@@ -113,6 +113,8 @@ RUN ARCH="${TARGETARCH:-$(dpkg --print-architecture)}" \
  && dpkg -i /tmp/code-server.deb \
  && rm -f /tmp/code-server.deb
 
+RUN python3 -c 'from pathlib import Path; p=Path("/usr/lib/code-server/lib/vscode/out/vs/code/browser/workbench/workbench.js"); s=p.read_text(); old="this.buffer.subarray("; count=s.count(old); assert count, f"{old} not found in {p}"; p.write_text(s.replace(old, "this.buffer.slice(")); print(f"Patched VSBuffer.slice WebKit workaround in {p}: {count} replacement(s)")'
+
 RUN if getent passwd "${NB_UID}" >/dev/null; then \
       EXISTING_USER="$(getent passwd "${NB_UID}" | cut -d: -f1)"; \
       if [ "${EXISTING_USER}" != "${NB_USER}" ]; then \

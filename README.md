@@ -56,6 +56,10 @@ The standard `kubeflow/code-server` image is the lightweight VS Code image. It
 does not use conda; it uses `uv` and installs its default Python environment
 under `/opt/code-server`.
 
+Both code-server images carry a temporary WebKit workaround for
+coder/code-server#7801 by patching VSBuffer slicing in the bundled workbench.
+This avoids blank webviews for Safari/iPad users until the fix lands upstream.
+
 The `kubeflow/code-server-llm` image is the all-in-one LLM development image. It
 does not use conda. Its CUDA base image is pinned by `LLM_BASE_IMAGE` in
 `versions/kubeflow.env`; it uses `uv` and installs a single `/opt/llm` Python
