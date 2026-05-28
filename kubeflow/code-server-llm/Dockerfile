@@ -42,7 +42,6 @@ ENV UV_CACHE_DIR=/opt/uv/cache
 ENV UV_LINK_MODE=hardlink
 ENV PATH=/opt/llm/bin:/home/${NB_USER}/.local/bin:/usr/local/bin:${PATH}
 ENV CUDA_HOME=/usr/local/cuda
-ENV HF_HOME=/home/${NB_USER}/srv/.cache/huggingface
 ENV TORCH_HOME=/home/${NB_USER}/srv/.cache/torch
 ENV VLLM_CACHE_ROOT=/home/${NB_USER}/srv/.cache/vllm
 ENV NVIDIA_VISIBLE_DEVICES=all
@@ -157,6 +156,8 @@ RUN if getent passwd "${NB_UID}" >/dev/null; then \
     "${HOME}/.local" \
     "${HOME_TMP}" \
     "${PERSISTENT_DIR}" \
+    "${TORCH_HOME}" \
+    "${VLLM_CACHE_ROOT}" \
     "${UV_PYTHON_INSTALL_DIR}" \
     "${UV_CACHE_DIR}" \
     "${VIRTUAL_ENV}" \
