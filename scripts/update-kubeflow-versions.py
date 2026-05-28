@@ -110,6 +110,16 @@ def torch_pin_from_requires(requires):
     return None
 
 
+def xformers_pin_from_requires(requires):
+    for requirement in requires:
+        if not requirement.startswith("xformers"):
+            continue
+        match = re.search(r"xformers\s*==\s*([0-9][^;,\s)]*)", requirement)
+        if match:
+            return match.group(1)
+    return None
+
+
 def torchvision_for_torch(torch_version):
     match = re.match(r"^(\d+)\.(\d+)\.(\d+)", torch_version)
     if not match:
@@ -233,7 +243,10 @@ def update_versions(current, include_code_server):
                 errors.append(f"vllm=={vllm_version}: no exact torch pin")
                 continue
             cuda_index = choose_cuda_index(torch_version)
-            xformers_version = latest_xformers_for_torch(torch_version)
+            xformers_version = (
+                xformers_pin_from_requires(vllm_requires)
+                or latest_xformers_for_torch(torch_version)
+            )
             selected = (vllm_version, torch_version, cuda_index, xformers_version)
             break
         except Exception as exc:
@@ -295,7 +308,10 @@ def build_llm_matrix(current, per_cuda):
             torch_version = torch_pin_from_requires(vllm_requires)
             if not torch_version:
                 continue
-            xformers_version = latest_xformers_for_torch(torch_version)
+            xformers_version = (
+                xformers_pin_from_requires(vllm_requires)
+                or latest_xformers_for_torch(torch_version)
+            )
             cuda_indexes = cuda_indexes_for_torch(torch_version)
             if not cuda_indexes:
                 continue

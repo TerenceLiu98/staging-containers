@@ -203,6 +203,7 @@ RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" -o /tmp/uv-instal
     "jupyter" \
     "ipykernel" \
  && uv cache clean \
+ && mkdir -p "${UV_CACHE_DIR}" \
  && chown -R "${NB_UID}:${NB_GID}" "${UV_PYTHON_INSTALL_DIR}" "${UV_CACHE_DIR}" "${VIRTUAL_ENV}"
 
 COPY --chown=${NB_USER}:${NB_GID} --chmod=755 s6/ /etc

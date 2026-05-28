@@ -90,7 +90,7 @@
       "uv_version": "0.11.16",
       "variant": "cuda12.4-torch2.6.0-vllm0.8.5.post1",
       "vllm_version": "0.8.5.post1",
-      "xformers_version": "0.0.29.post3"
+      "xformers_version": "0.0.29.post2"
     }
   ]
 }
