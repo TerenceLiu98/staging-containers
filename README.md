@@ -24,7 +24,7 @@ Override a version locally:
 
 ```bash
 make -C kubeflow build-code-server CODESERVER_VERSION=4.103.2
-make -C kubeflow build-opencode OPENCODE_VERSION=1.17.20-kubeflow.1
+make -C kubeflow build-opencode OPENCODE_VERSION=1.17.20-kubeflow.2
 make -C kubeflow build-code-server-llm VLLM_VERSION=0.19.1 XFORMERS_VERSION=0.0.34
 make -C kubeflow build-jupyter-cuda-pytorch CUDA_VERSION=13.0 PYTORCH_VERSION=2.10.0 PYTORCH_CUDA_INDEX=cu130
 ```
