@@ -1,0 +1,49 @@
+#!/command/with-contenv bash
+set -euo pipefail
+
+PERSISTENT_STATE_DIR="${PERSISTENT_STATE_DIR:-${PERSISTENT_DIR}/.state}"
+OPENCODE_STATE_DIR="${PERSISTENT_STATE_DIR}/opencode"
+
+mkdir -p "${PERSISTENT_DIR}" "${PERSISTENT_STATE_DIR}"
+
+if [ ! -e "${PERSISTENT_STATE_DIR}/.home_initialized" ]; then
+  echo "INFO: Copying contents of '${HOME_TMP}' to '${HOME}'..."
+  cp -r -T --update=none "${HOME_TMP}" "${HOME}"
+else
+  echo "INFO: Persistent home state already initialized."
+fi
+
+link_persistent_dir() {
+  local home_path="$1"
+  local state_path="$2"
+
+  mkdir -p "$(dirname "${home_path}")" "$(dirname "${state_path}")"
+
+  if [ ! -e "${state_path}" ] && [ ! -L "${state_path}" ]; then
+    mkdir -p "${state_path}"
+  fi
+
+  if [ -d "${home_path}" ] && [ ! -L "${home_path}" ] && [ -z "$(find "${state_path}" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+    cp -a "${home_path}/." "${state_path}/"
+  fi
+
+  if [ -e "${home_path}" ] || [ -L "${home_path}" ]; then
+    rm -rf "${home_path}"
+  fi
+
+  ln -s "${state_path}" "${home_path}"
+}
+
+link_persistent_dir "${HOME}/.local/share/opencode" "${OPENCODE_STATE_DIR}/data"
+link_persistent_dir "${HOME}/.config/opencode" "${OPENCODE_STATE_DIR}/config"
+link_persistent_dir "${HOME}/.cache/opencode" "${OPENCODE_STATE_DIR}/cache"
+link_persistent_dir "${HOME}/.local/state/opencode" "${OPENCODE_STATE_DIR}/state"
+
+if [ ! -e "${HOME}/.config/opencode/opencode.json" ]; then
+  printf '%s\n' '{' \
+    '  "$schema": "https://opencode.ai/config.json",' \
+    '  "share": "disabled"' \
+    '}' > "${HOME}/.config/opencode/opencode.json"
+fi
+
+touch "${PERSISTENT_STATE_DIR}/.home_initialized"

@@ -1,0 +1,16 @@
+#!/command/with-contenv bash
+set -euo pipefail
+
+export XDG_RUNTIME_DIR="/tmp/runtime-${NB_USER}"
+mkdir -p "${XDG_RUNTIME_DIR}"
+chmod 700 "${XDG_RUNTIME_DIR}"
+
+/etc/init-persistent-home
+
+cd "${PERSISTENT_DIR}" || { echo "ERROR: failed to cd to ${PERSISTENT_DIR}"; exit 1; }
+echo "INFO: starting OpenCode at ${NB_PREFIX:-/}..."
+exec 2>&1
+exec /usr/local/bin/opencode web \
+  --hostname 0.0.0.0 \
+  --port 8888 \
+  --base-path "${NB_PREFIX:-/}"

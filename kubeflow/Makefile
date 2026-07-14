@@ -23,6 +23,7 @@ PYTORCH_VERSION ?= 2.10.0
 TORCHAUDIO_VERSION ?= 2.10.0
 TORCHVISION_VERSION ?= 0.25.0
 CODESERVER_VERSION ?= 4.121.0
+OPENCODE_VERSION ?= 1.17.20-kubeflow.1
 UV_VERSION ?= 0.11.16
 LLM_BASE_IMAGE ?= nvidia/cuda:13.0.3-devel-ubuntu22.04
 PYTORCH_CUDA_INDEX ?= cu130
@@ -44,13 +45,14 @@ BASE_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)
 JUPYTER_BASE_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-jupyter-$(JUPYTER_VERSION)
 JUPYTER_CUDA_PYTORCH_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-jupyter-$(JUPYTER_VERSION)-cuda-$(CUDA_VERSION)-pytorch-$(PYTORCH_VERSION)
 CODESERVER_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-code-server-$(CODESERVER_VERSION)
+OPENCODE_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-opencode-$(OPENCODE_VERSION)
 CODESERVER_LLM_IMAGE_TAG := $(PROJECT_NAME)-code-server-llm-cuda-$(CUDA_VERSION)-torch-$(PYTORCH_VERSION)-vllm-$(VLLM_VERSION)
 
-.PHONY: all build-base push-base build-jupyter-base push-jupyter-base build-jupyter-cuda-pytorch push-jupyter-cuda-pytorch build-code-server build-code-server-llm push-code-server push-code-server-llm
+.PHONY: all build-base push-base build-jupyter-base push-jupyter-base build-jupyter-cuda-pytorch push-jupyter-cuda-pytorch build-code-server build-opencode build-code-server-llm push-code-server push-opencode push-code-server-llm
 
 # Default target
-build-all: build-base build-jupyter-base build-jupyter-cuda-pytorch build-code-server build-code-server-llm
-push-all: push-base push-jupyter-base push-jupyter-cuda-pytorch push-code-server push-code-server-llm
+build-all: build-base build-jupyter-base build-jupyter-cuda-pytorch build-code-server build-opencode build-code-server-llm
+push-all: push-base push-jupyter-base push-jupyter-cuda-pytorch push-code-server push-opencode push-code-server-llm
 
 # Build base image
 build-base:
@@ -137,6 +139,22 @@ build-code-server:
 push-code-server:
 	$(CONTAINER_CLI) push $(IMAGE_NAME):$(CODESERVER_IMAGE_TAG)
 	$(CONTAINER_CLI) push $(IMAGE_NAME):latest-code-server
+
+build-opencode: build-base
+	$(CONTAINER_CLI) build \
+		-f opencode/Dockerfile \
+		-t $(IMAGE_NAME):$(OPENCODE_IMAGE_TAG) \
+		--build-arg TARGETPLATFORM=$(TARGETPLATFORM) \
+		--build-arg BASE_IMAGE_TAG=$(BASE_IMAGE_TAG) \
+		--build-arg PROJECT_NAME=$(PROJECT_NAME) \
+		--build-arg REGISTRY_PREFIX=$(REGISTRY_PREFIX) \
+		--build-arg OPENCODE_VERSION=$(OPENCODE_VERSION) \
+		opencode
+	$(CONTAINER_CLI) tag $(IMAGE_NAME):$(OPENCODE_IMAGE_TAG) $(IMAGE_NAME):latest-opencode
+
+push-opencode:
+	$(CONTAINER_CLI) push $(IMAGE_NAME):$(OPENCODE_IMAGE_TAG)
+	$(CONTAINER_CLI) push $(IMAGE_NAME):latest-opencode
 
 build-code-server-llm:
 	$(CONTAINER_CLI) build \

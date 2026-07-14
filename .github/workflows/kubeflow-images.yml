@@ -14,6 +14,7 @@ on:
           - jupyter
           - jupyter-cuda-pytorch
           - code-server
+          - opencode
           - code-server-llm
       push_images:
         description: Push images to the registry.
@@ -37,6 +38,11 @@ on:
         type: string
       code_server_version:
         description: Override CODESERVER_VERSION from versions/kubeflow.env.
+        required: false
+        default: ""
+        type: string
+      opencode_version:
+        description: Override OPENCODE_VERSION from versions/kubeflow.env.
         required: false
         default: ""
         type: string
@@ -137,6 +143,7 @@ jobs:
           INPUT_REGISTRY_PREFIX: ${{ inputs.registry_prefix }}
           INPUT_TARGET_PLATFORM: ${{ inputs.target_platform }}
           INPUT_CODE_SERVER_VERSION: ${{ inputs.code_server_version }}
+          INPUT_OPENCODE_VERSION: ${{ inputs.opencode_version }}
           INPUT_JUPYTER_VERSION: ${{ inputs.jupyter_version }}
           INPUT_JUPYTERLAB_VERSION: ${{ inputs.jupyterlab_version }}
           INPUT_PYTHON_VERSION: ${{ inputs.python_version }}
@@ -160,6 +167,9 @@ jobs:
 
           if [ -n "${INPUT_CODE_SERVER_VERSION:-}" ]; then
             CODESERVER_VERSION="${INPUT_CODE_SERVER_VERSION}"
+          fi
+          if [ -n "${INPUT_OPENCODE_VERSION:-}" ]; then
+            OPENCODE_VERSION="${INPUT_OPENCODE_VERSION}"
           fi
           if [ -n "${INPUT_JUPYTER_VERSION:-}" ]; then
             JUPYTER_VERSION="${INPUT_JUPYTER_VERSION}"
@@ -213,6 +223,7 @@ jobs:
           JUPYTER_BASE_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-jupyter-${JUPYTER_VERSION}"
           JUPYTER_CUDA_PYTORCH_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-jupyter-${JUPYTER_VERSION}-cuda-${CUDA_VERSION}-pytorch-${PYTORCH_VERSION}"
           CODESERVER_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-code-server-${CODESERVER_VERSION}"
+          OPENCODE_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-opencode-${OPENCODE_VERSION}"
           CODESERVER_LLM_IMAGE_TAG="${PROJECT_NAME}-code-server-llm-cuda-${CUDA_VERSION}-torch-${PYTORCH_VERSION}-vllm-${VLLM_VERSION}"
 
           REGISTRY_HOST="${REGISTRY_PREFIX%%/*}"
@@ -240,6 +251,7 @@ jobs:
             echo "TORCHAUDIO_VERSION=${TORCHAUDIO_VERSION}"
             echo "TORCHVISION_VERSION=${TORCHVISION_VERSION}"
             echo "CODESERVER_VERSION=${CODESERVER_VERSION}"
+            echo "OPENCODE_VERSION=${OPENCODE_VERSION}"
             echo "UV_VERSION=${UV_VERSION}"
             echo "LLM_BASE_IMAGE=${LLM_BASE_IMAGE}"
             echo "PYTORCH_CUDA_INDEX=${PYTORCH_CUDA_INDEX}"
@@ -258,6 +270,7 @@ jobs:
             echo "JUPYTER_BASE_IMAGE_TAG=${JUPYTER_BASE_IMAGE_TAG}"
             echo "JUPYTER_CUDA_PYTORCH_IMAGE_TAG=${JUPYTER_CUDA_PYTORCH_IMAGE_TAG}"
             echo "CODESERVER_IMAGE_TAG=${CODESERVER_IMAGE_TAG}"
+            echo "OPENCODE_IMAGE_TAG=${OPENCODE_IMAGE_TAG}"
             echo "CODESERVER_LLM_IMAGE_TAG=${CODESERVER_LLM_IMAGE_TAG}"
           } >> "${GITHUB_ENV}"
 
@@ -369,6 +382,23 @@ jobs:
               kubeflow/code-server
           }
 
+          build_opencode() {
+            docker buildx build \
+              --platform "${TARGETPLATFORM}" \
+              --file kubeflow/opencode/Dockerfile \
+              --tag "${IMAGE_NAME}:${OPENCODE_IMAGE_TAG}" \
+              --tag "${IMAGE_NAME}:latest-opencode" \
+              --cache-from "type=gha,scope=kubeflow-opencode" \
+              --cache-to "type=gha,mode=max,scope=kubeflow-opencode" \
+              "${OUTPUT_ARGS[@]}" \
+              --build-arg "TARGETPLATFORM=${TARGETPLATFORM}" \
+              --build-arg "BASE_IMAGE_TAG=${BASE_IMAGE_TAG}" \
+              --build-arg "PROJECT_NAME=${PROJECT_NAME}" \
+              --build-arg "REGISTRY_PREFIX=${REGISTRY_PREFIX}" \
+              --build-arg "OPENCODE_VERSION=${OPENCODE_VERSION}" \
+              kubeflow/opencode
+          }
+
           build_code_server_llm() {
             docker buildx build \
               --platform "${TARGETPLATFORM}" \
@@ -406,6 +436,7 @@ jobs:
               build_jupyter
               build_jupyter_cuda_pytorch
               build_code_server
+              build_opencode
               ;;
             base)
               build_base
@@ -421,6 +452,10 @@ jobs:
               ;;
             code-server)
               build_code_server
+              ;;
+            opencode)
+              build_base
+              build_opencode
               ;;
             code-server-llm)
               echo "code-server-llm is built by the matrix job."
