@@ -1,4 +1,4 @@
-name: Build Kubeflow Images
+name: Build Kubeflow Images (including OpenCode)
 
 on:
   workflow_dispatch:
