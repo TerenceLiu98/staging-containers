@@ -31,8 +31,9 @@ make -C kubeflow build-jupyter-cuda-pytorch CUDA_VERSION=13.0 PYTORCH_VERSION=2.
 
 GitHub Actions:
 
-- `.github/workflows/kubeflow-images.yml` builds on pushes to `kubeflow/**`,
-  `versions/kubeflow.env`, and the workflow file.
+- `.github/workflows/kubeflow-images.yml` builds the complete Kubeflow image set
+  on matching pushes to `master`, including changes under `kubeflow/**`,
+  `versions/**`, `scripts/**`, the workflow file, and this README.
 - The workflow can be run manually with overrides for code-server, OpenCode, Jupyter,
   Python, CUDA, PyTorch, torchaudio, torchvision, vLLM, xFormers, and DeepSpeed
   versions.
@@ -91,7 +92,7 @@ directory:
 ## Kubeflow OpenCode Image
 
 The `kubeflow/opencode` image runs the forked OpenCode Web server on port 8888.
-It passes Kubeflow's `NB_PREFIX` to `opencode web --base-path`, so the Web UI,
+It passes Kubeflow's `NB_PREFIX` to `opencode serve --base-path`, so the Web UI,
 API, SSE, and terminal WebSocket endpoints work behind the Notebook reverse
 proxy. The default workspace is `/home/jovyan/srv`.
 
