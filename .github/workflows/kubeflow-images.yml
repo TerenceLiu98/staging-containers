@@ -1,4 +1,5 @@
-name: Build Kubeflow Images (including OpenCode)
+name: Build Kubeflow Images
+run-name: Build Kubeflow images (${{ github.event_name == 'workflow_dispatch' && inputs.image || 'all' }})
 
 on:
   workflow_dispatch:
@@ -115,7 +116,7 @@ permissions:
 
 concurrency:
   group: kubeflow-images-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:

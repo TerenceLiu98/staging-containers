@@ -1,4 +1,4 @@
-name: Build and Push Images
+name: Build Legacy Kubeflow Images
 
 on:
   push:
