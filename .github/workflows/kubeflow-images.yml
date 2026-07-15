@@ -16,6 +16,7 @@ on:
           - jupyter-cuda-pytorch
           - code-server
           - opencode
+          - opencode-cuda-pytorch
           - code-server-llm
       push_images:
         description: Push images to the registry.
@@ -225,6 +226,7 @@ jobs:
           JUPYTER_CUDA_PYTORCH_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-jupyter-${JUPYTER_VERSION}-cuda-${CUDA_VERSION}-pytorch-${PYTORCH_VERSION}"
           CODESERVER_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-code-server-${CODESERVER_VERSION}"
           OPENCODE_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-opencode-${OPENCODE_VERSION}"
+          OPENCODE_CUDA_PYTORCH_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-opencode-${OPENCODE_VERSION}-cuda-${CUDA_VERSION}-pytorch-${PYTORCH_VERSION}"
           CODESERVER_LLM_IMAGE_TAG="${PROJECT_NAME}-code-server-llm-cuda-${CUDA_VERSION}-torch-${PYTORCH_VERSION}-vllm-${VLLM_VERSION}"
 
           REGISTRY_HOST="${REGISTRY_PREFIX%%/*}"
@@ -272,6 +274,7 @@ jobs:
             echo "JUPYTER_CUDA_PYTORCH_IMAGE_TAG=${JUPYTER_CUDA_PYTORCH_IMAGE_TAG}"
             echo "CODESERVER_IMAGE_TAG=${CODESERVER_IMAGE_TAG}"
             echo "OPENCODE_IMAGE_TAG=${OPENCODE_IMAGE_TAG}"
+            echo "OPENCODE_CUDA_PYTORCH_IMAGE_TAG=${OPENCODE_CUDA_PYTORCH_IMAGE_TAG}"
             echo "CODESERVER_LLM_IMAGE_TAG=${CODESERVER_LLM_IMAGE_TAG}"
           } >> "${GITHUB_ENV}"
 
@@ -400,6 +403,27 @@ jobs:
               kubeflow/opencode
           }
 
+          build_opencode_cuda_pytorch() {
+            docker buildx build \
+              --platform "${TARGETPLATFORM}" \
+              --file kubeflow/opencode-cuda-pytorch/Dockerfile \
+              --tag "${IMAGE_NAME}:${OPENCODE_CUDA_PYTORCH_IMAGE_TAG}" \
+              --tag "${IMAGE_NAME}:latest-opencode-cuda-pytorch" \
+              --cache-from "type=gha,scope=kubeflow-opencode-cuda-pytorch" \
+              --cache-to "type=gha,mode=max,scope=kubeflow-opencode-cuda-pytorch" \
+              "${OUTPUT_ARGS[@]}" \
+              --build-arg "TARGETPLATFORM=${TARGETPLATFORM}" \
+              --build-arg "OPENCODE_IMAGE_TAG=${OPENCODE_IMAGE_TAG}" \
+              --build-arg "PROJECT_NAME=${PROJECT_NAME}" \
+              --build-arg "REGISTRY_PREFIX=${REGISTRY_PREFIX}" \
+              --build-arg "CUDA_VERSION=${CUDA_VERSION}" \
+              --build-arg "PYTORCH_VERSION=${PYTORCH_VERSION}" \
+              --build-arg "TORCHAUDIO_VERSION=${TORCHAUDIO_VERSION}" \
+              --build-arg "TORCHVISION_VERSION=${TORCHVISION_VERSION}" \
+              --build-arg "PYTORCH_CUDA_INDEX=${PYTORCH_CUDA_INDEX}" \
+              kubeflow/opencode-cuda-pytorch
+          }
+
           build_code_server_llm() {
             docker buildx build \
               --platform "${TARGETPLATFORM}" \
@@ -438,6 +462,7 @@ jobs:
               build_jupyter_cuda_pytorch
               build_code_server
               build_opencode
+              build_opencode_cuda_pytorch
               ;;
             base)
               build_base
@@ -457,6 +482,11 @@ jobs:
             opencode)
               build_base
               build_opencode
+              ;;
+            opencode-cuda-pytorch)
+              build_base
+              build_opencode
+              build_opencode_cuda_pytorch
               ;;
             code-server-llm)
               echo "code-server-llm is built by the matrix job."

@@ -16,6 +16,7 @@ Local build example:
 ```bash
 make -C kubeflow build-code-server
 make -C kubeflow build-opencode
+make -C kubeflow build-opencode-cuda-pytorch
 make -C kubeflow build-code-server-llm
 make -C kubeflow build-jupyter-cuda-pytorch
 ```
@@ -25,6 +26,7 @@ Override a version locally:
 ```bash
 make -C kubeflow build-code-server CODESERVER_VERSION=4.103.2
 make -C kubeflow build-opencode OPENCODE_VERSION=1.17.20-kubeflow.2
+make -C kubeflow build-opencode-cuda-pytorch CUDA_VERSION=13.0 PYTORCH_VERSION=2.10.0 PYTORCH_CUDA_INDEX=cu130
 make -C kubeflow build-code-server-llm VLLM_VERSION=0.19.1 XFORMERS_VERSION=0.0.34
 make -C kubeflow build-jupyter-cuda-pytorch CUDA_VERSION=13.0 PYTORCH_VERSION=2.10.0 PYTORCH_CUDA_INDEX=cu130
 ```
@@ -95,6 +97,29 @@ The `kubeflow/opencode` image runs the forked OpenCode Web server on port 8888.
 It passes Kubeflow's `NB_PREFIX` to `opencode serve --base-path`, so the Web UI,
 API, SSE, and terminal WebSocket endpoints work behind the Notebook reverse
 proxy. The default workspace is `/home/jovyan/srv`.
+
+OpenCode is published in two variants:
+
+- `latest-opencode` is the lightweight base image with Python and conda.
+- `latest-opencode-cuda-pytorch` extends the same OpenCode image with the pinned
+  CUDA builds of PyTorch, torchaudio, and torchvision. It declares NVIDIA
+  `compute` and `utility` capabilities so GPU-enabled Kubeflow pods can expose
+  the GPU and `nvidia-smi` through the NVIDIA Container Runtime.
+
+The versioned GPU image tag includes the OpenCode, CUDA, and PyTorch versions:
+
+```text
+docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-opencode-1.17.20-kubeflow.2-cuda-13.0-pytorch-2.10.0
+```
+
+The GPU device and host driver utilities are supplied at runtime, so the
+Notebook pod must request an NVIDIA GPU. Verify the environment inside such a
+pod with:
+
+```bash
+nvidia-smi
+python3 -c 'import torch; print(torch.__version__, torch.version.cuda, torch.cuda.is_available())'
+```
 
 The image downloads the Linux x64 baseline archive from
 `TerenceLiu98/opencode` at the version pinned by `OPENCODE_VERSION`, then checks
