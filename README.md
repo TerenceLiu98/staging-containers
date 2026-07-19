@@ -17,6 +17,8 @@ Local build example:
 make -C kubeflow build-code-server
 make -C kubeflow build-opencode
 make -C kubeflow build-opencode-cuda-pytorch
+make -C kubeflow build-kubecode
+make -C kubeflow build-kubecode-cuda-pytorch
 make -C kubeflow build-code-server-llm
 make -C kubeflow build-jupyter-cuda-pytorch
 ```
@@ -27,6 +29,8 @@ Override a version locally:
 make -C kubeflow build-code-server CODESERVER_VERSION=4.103.2
 make -C kubeflow build-opencode OPENCODE_VERSION=1.17.20-kubeflow.2
 make -C kubeflow build-opencode-cuda-pytorch CUDA_VERSION=13.0 PYTORCH_VERSION=2.10.0 PYTORCH_CUDA_INDEX=cu130
+make -C kubeflow build-kubecode KUBECODE_VERSION=0.1.1
+make -C kubeflow build-kubecode-cuda-pytorch CUDA_VERSION=13.0 PYTORCH_VERSION=2.10.0 PYTORCH_CUDA_INDEX=cu130
 make -C kubeflow build-code-server-llm VLLM_VERSION=0.19.1 XFORMERS_VERSION=0.0.34
 make -C kubeflow build-jupyter-cuda-pytorch CUDA_VERSION=13.0 PYTORCH_VERSION=2.10.0 PYTORCH_CUDA_INDEX=cu130
 ```
@@ -36,9 +40,9 @@ GitHub Actions:
 - `.github/workflows/kubeflow-images.yml` builds the complete Kubeflow image set
   on matching pushes to `master`, including changes under `kubeflow/**`,
   `versions/**`, `scripts/**`, the workflow file, and this README.
-- The workflow can be run manually with overrides for code-server, OpenCode, Jupyter,
-  Python, CUDA, PyTorch, torchaudio, torchvision, vLLM, xFormers, and DeepSpeed
-  versions.
+- The workflow can be run manually with overrides for code-server, OpenCode,
+  Kubecode, Jupyter, Python, CUDA, PyTorch, torchaudio, torchvision, vLLM,
+  xFormers, and DeepSpeed versions.
 - Its scheduled run rebuilds the currently pinned versions.
 - Images are pushed to Docker Hub by default as `docker.io/terencelau/kubeflow`.
   Configure repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`.
@@ -139,6 +143,60 @@ cache, and state are linked into one persistent subtree:
 Users can edit `~/.config/opencode/opencode.json` normally; it persists at
 `/home/jovyan/srv/.state/opencode/config/opencode.json`. On first startup the
 image creates a minimal configuration with session sharing disabled.
+
+## Kubeflow Kubecode Images
+
+The `kubeflow/kubecode` image packages the pinned standalone release from
+`Bayes-Cluster/kubecode` and runs its project-oriented AI coding workspace on
+port 8888. It inherits the regular OpenCode image, disables the standalone
+OpenCode Web service, and keeps the pinned OpenCode CLI as an immediately
+available ACP Agent inside Kubecode.
+
+Kubecode receives Kubeflow's `NB_PREFIX` through `--base-path`, restricts the
+project picker to `/home/jovyan/srv`, and stores its SQLite database and private
+worktrees under `/home/jovyan/srv/.state/kubecode`. Its unauthenticated
+non-loopback listener is intended to be exposed only through the authenticated
+Kubeflow Notebook proxy.
+
+Kubecode is published in two variants:
+
+- `latest-kubecode` is the lightweight Python/conda image with Kubecode and
+  OpenCode.
+- `latest-kubecode-cuda-pytorch` adds the pinned CUDA builds of PyTorch,
+  torchaudio, and torchvision, plus NVIDIA `compute` and `utility` runtime
+  capabilities.
+
+Versioned tags include both Kubecode and the bundled OpenCode version:
+
+```text
+docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.1-opencode-1.17.20-kubeflow.2
+docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.1-opencode-1.17.20-kubeflow.2-cuda-13.0-pytorch-2.10.0
+```
+
+Mount the user PVC at `/home/jovyan/srv`. The initialization step keeps
+Kubecode, OpenCode, Codex, and Claude state under the persistent `.state`
+subtree:
+
+```text
+/home/jovyan/srv/.state/kubecode
+/home/jovyan/srv/.state/opencode
+/home/jovyan/srv/.state/codex
+/home/jovyan/srv/.state/claude
+```
+
+Only OpenCode is bundled as a provider Agent. The standalone Kubecode release
+contains the Codex and Claude ACP adapters but intentionally excludes their
+provider CLIs. Users may install those CLIs separately without rebuilding
+Kubecode; place persistent user-installed commands in
+`/home/jovyan/srv/.local/bin`.
+
+The image exposes `/healthz` and `/readyz` for liveness and readiness probes.
+The current downstream image remains `linux/amd64` because the inherited
+OpenCode release is amd64-only, even though upstream Kubecode also publishes an
+arm64 standalone archive.
+
+Kubecode is distributed under AGPL-3.0-or-later. The image retains the upstream
+standalone archive's license and third-party notices under `/opt/kubecode`.
 
 `code-server-llm` is built as a version matrix from
 `versions/code-server-llm-matrix.json`. Each entry is a compatible tuple of CUDA
