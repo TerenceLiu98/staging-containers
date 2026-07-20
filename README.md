@@ -149,8 +149,8 @@ image creates a minimal configuration with session sharing disabled.
 The `kubeflow/kubecode` image packages the pinned standalone release from
 `Bayes-Cluster/kubecode` and runs its project-oriented AI coding workspace on
 port 8888. It inherits the regular OpenCode image, disables the standalone
-OpenCode Web service, and keeps the pinned OpenCode CLI as an immediately
-available ACP Agent inside Kubecode.
+OpenCode Web service, and bundles pinned OpenCode, Codex, and Claude Code
+provider CLIs as immediately available ACP Agents inside Kubecode.
 
 Kubecode receives Kubeflow's `NB_PREFIX` through `--base-path`, restricts the
 project picker to `/home/jovyan/srv`, and stores its SQLite database and private
@@ -160,17 +160,17 @@ Kubeflow Notebook proxy.
 
 Kubecode is published in two variants:
 
-- `latest-kubecode` is the lightweight Python/conda image with Kubecode and
-  OpenCode.
+- `latest-kubecode` is the lightweight Python/conda image with Kubecode,
+  OpenCode, Codex, and Claude Code.
 - `latest-kubecode-cuda-pytorch` adds the pinned CUDA builds of PyTorch,
   torchaudio, and torchvision, plus NVIDIA `compute` and `utility` runtime
   capabilities.
 
-Versioned tags include both Kubecode and the bundled OpenCode version:
+Versioned tags include Kubecode and all three bundled provider CLI versions:
 
 ```text
-docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.1-opencode-1.17.20-kubeflow.2
-docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.1-opencode-1.17.20-kubeflow.2-cuda-13.0-pytorch-2.10.0
+docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.1-opencode-1.17.20-kubeflow.2-codex-0.144.6-claude-2.1.215
+docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.1-opencode-1.17.20-kubeflow.2-codex-0.144.6-claude-2.1.215-cuda-13.0-pytorch-2.10.0
 ```
 
 Mount the user PVC at `/home/jovyan/srv`. The initialization step keeps
@@ -184,11 +184,12 @@ subtree:
 /home/jovyan/srv/.state/claude
 ```
 
-Only OpenCode is bundled as a provider Agent. The standalone Kubecode release
-contains the Codex and Claude ACP adapters but intentionally excludes their
-provider CLIs. Users may install those CLIs separately without rebuilding
-Kubecode; place persistent user-installed commands in
-`/home/jovyan/srv/.local/bin`.
+The standalone Kubecode release contains the Codex and Claude ACP adapters.
+This image adds the matching provider CLIs as verified native Linux binaries at
+`/usr/local/bin/codex` and `/usr/local/bin/claude`; Node.js and npm are not
+required. CLI versions are pinned in `versions/kubeflow.env`, and their
+credentials and configuration persist through the `.codex` and `.claude`
+state links above.
 
 The image exposes `/healthz` and `/readyz` for liveness and readiness probes.
 The current downstream image remains `linux/amd64` because the inherited

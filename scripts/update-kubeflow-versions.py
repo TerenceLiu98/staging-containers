@@ -11,6 +11,7 @@ from pathlib import Path
 
 PYPI_URL = "https://pypi.org/pypi/{package}/json"
 GITHUB_RELEASE_URL = "https://api.github.com/repos/{repo}/releases/latest"
+CLAUDE_CODE_RELEASE_URL = "https://downloads.claude.ai/claude-code-releases"
 PYTORCH_INDEX_URL = "https://download.pytorch.org/whl/{index}/torch/"
 DOCKERHUB_CUDA_TAGS_URL = "https://hub.docker.com/v2/repositories/nvidia/cuda/tags/?page_size=100&name={prefix}."
 CUDA_UBUNTU_BASES = ("ubuntu24.04", "ubuntu22.04")
@@ -88,6 +89,52 @@ def latest_code_server_version():
     data = fetch_json(GITHUB_RELEASE_URL.format(repo="coder/code-server"))
     tag = data["tag_name"]
     return tag.removeprefix("v")
+
+
+def release_asset_sha256(release, asset_name):
+    for asset in release.get("assets", []):
+        if asset.get("name") != asset_name:
+            continue
+        digest = asset.get("digest", "")
+        if not digest.startswith("sha256:"):
+            raise RuntimeError(f"No SHA-256 digest found for release asset {asset_name}")
+        checksum = digest.removeprefix("sha256:")
+        if not re.fullmatch(r"[a-f0-9]{64}", checksum):
+            raise RuntimeError(f"Invalid SHA-256 digest for release asset {asset_name}")
+        return checksum
+    raise RuntimeError(f"Release asset not found: {asset_name}")
+
+
+def latest_codex_cli_release():
+    release = fetch_json(GITHUB_RELEASE_URL.format(repo="openai/codex"))
+    version = release["tag_name"].removeprefix("rust-v")
+    return {
+        "CODEX_CLI_VERSION": version,
+        "CODEX_CLI_SHA256_AMD64": release_asset_sha256(
+            release, "codex-x86_64-unknown-linux-musl.tar.gz"
+        ),
+        "CODEX_CLI_SHA256_ARM64": release_asset_sha256(
+            release, "codex-aarch64-unknown-linux-musl.tar.gz"
+        ),
+    }
+
+
+def latest_claude_code_release():
+    version = fetch_text(f"{CLAUDE_CODE_RELEASE_URL}/latest").strip()
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[^\s]+)?", version):
+        raise RuntimeError(f"Invalid Claude Code version: {version}")
+    manifest = fetch_json(f"{CLAUDE_CODE_RELEASE_URL}/{version}/manifest.json")
+    platforms = manifest.get("platforms", {})
+    checksums = {}
+    for variable, platform in (
+        ("CLAUDE_CODE_SHA256_AMD64", "linux-x64"),
+        ("CLAUDE_CODE_SHA256_ARM64", "linux-arm64"),
+    ):
+        checksum = platforms.get(platform, {}).get("checksum", "")
+        if not re.fullmatch(r"[a-f0-9]{64}", checksum):
+            raise RuntimeError(f"Invalid Claude Code checksum for {platform}")
+        checksums[variable] = checksum
+    return {"CLAUDE_CODE_VERSION": version, **checksums}
 
 
 def requires_dist_for(package, version):
@@ -225,6 +272,8 @@ def update_versions(current, include_code_server):
     updates = {}
     if include_code_server:
         updates["CODESERVER_VERSION"] = latest_code_server_version()
+    updates.update(latest_codex_cli_release())
+    updates.update(latest_claude_code_release())
 
     vllm_data = fetch_json(PYPI_URL.format(package="vllm"))
     vllm_versions = sorted(
