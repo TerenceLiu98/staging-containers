@@ -67,8 +67,16 @@ RUN case "${TARGETPLATFORM}" in \
  && echo "${CLAUDE_SHA256}  /tmp/claude" | sha256sum -c - \
  && install -m 0755 /tmp/claude /usr/local/bin/claude \
  && rm -f /tmp/claude \
- && /usr/local/bin/codex --version \
- && /usr/local/bin/claude --version
+ && mkdir -p /opt/kubecode-cli-smoke-home/.codex \
+ && HOME=/opt/kubecode-cli-smoke-home \
+      CODEX_HOME=/opt/kubecode-cli-smoke-home/.codex \
+      /usr/local/bin/codex --version \
+ && HOME=/opt/kubecode-cli-smoke-home \
+      /usr/local/bin/claude --version \
+ && rm -rf /opt/kubecode-cli-smoke-home \
+ && rm -rf "${HOME}/.codex" "${HOME}/.claude" \
+ && test ! -e "${HOME}/.codex" \
+ && test ! -e "${HOME}/.claude"
 
 ENV KUBECODE_OPENCODE_PATH=/usr/local/bin/opencode
 

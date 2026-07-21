@@ -169,8 +169,8 @@ Kubecode is published in two variants:
 Versioned tags include Kubecode and all three bundled provider CLI versions:
 
 ```text
-docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.1-opencode-1.17.20-kubeflow.2-codex-0.144.6-claude-2.1.215
-docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.1-opencode-1.17.20-kubeflow.2-codex-0.144.6-claude-2.1.215-cuda-13.0-pytorch-2.10.0
+docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.1-r1-opencode-1.17.20-kubeflow.2-codex-0.144.6-claude-2.1.215
+docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.1-r1-opencode-1.17.20-kubeflow.2-codex-0.144.6-claude-2.1.215-cuda-13.0-pytorch-2.10.0
 ```
 
 Mount the user PVC at `/home/jovyan/srv`. The initialization step keeps
