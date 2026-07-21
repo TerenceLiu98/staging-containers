@@ -7,6 +7,8 @@ FROM --platform=$TARGETPLATFORM ${REGISTRY_PREFIX}/${PROJECT_NAME}:${OPENCODE_IM
 
 ARG TARGETPLATFORM
 ARG KUBECODE_VERSION
+ARG KUBECODE_IMAGE_REVISION
+ARG OPENCODE_VERSION
 ARG CODEX_CLI_VERSION
 ARG CODEX_CLI_SHA256_AMD64
 ARG CODEX_CLI_SHA256_ARM64
@@ -15,11 +17,39 @@ ARG CLAUDE_CODE_SHA256_AMD64
 ARG CLAUDE_CODE_SHA256_ARM64
 
 LABEL org.opencontainers.image.source="https://github.com/Bayes-Cluster/kubecode" \
-      org.opencontainers.image.version="${KUBECODE_VERSION}" \
+      org.opencontainers.image.version="${KUBECODE_VERSION}-r${KUBECODE_IMAGE_REVISION}" \
       org.opencontainers.image.licenses="AGPL-3.0-or-later" \
-      org.opencontainers.image.description="Kubecode AI coding workspace for Kubeflow"
+      org.opencontainers.image.description="Kubecode AI coding workspace for Kubeflow" \
+      io.kubecode.image.revision="${KUBECODE_IMAGE_REVISION}" \
+      io.kubecode.opencode.version="${OPENCODE_VERSION}" \
+      io.kubecode.codex.version="${CODEX_CLI_VERSION}" \
+      io.kubecode.claude-code.version="${CLAUDE_CODE_VERSION}"
 
 USER root
+
+RUN export DEBIAN_FRONTEND=noninteractive \
+ && apt-get -yq update \
+ && apt-get -yq install --no-install-recommends \
+      bubblewrap \
+      diffutils \
+      dnsutils \
+      file \
+      iproute2 \
+      iputils-ping \
+      jq \
+      less \
+      lsof \
+      netcat-openbsd \
+      patch \
+      procps \
+      psmisc \
+      ripgrep \
+      rsync \
+      tmux \
+      tree \
+ && bwrap --version \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 RUN case "${TARGETPLATFORM}" in \
       linux/amd64) KUBECODE_ARCH="amd64" ;; \

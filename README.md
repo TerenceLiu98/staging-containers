@@ -150,7 +150,10 @@ The `kubeflow/kubecode` image packages the pinned standalone release from
 `Bayes-Cluster/kubecode` and runs its project-oriented AI coding workspace on
 port 8888. It inherits the regular OpenCode image, disables the standalone
 OpenCode Web service, and bundles pinned OpenCode, Codex, and Claude Code
-provider CLIs as immediately available ACP Agents inside Kubecode.
+provider CLIs as immediately available ACP Agents inside Kubecode. It also
+includes Bubblewrap for sandboxed coding-tool execution and a compact set of
+search, patching, process, networking, and terminal diagnostics tools commonly
+used by coding agents.
 
 Kubecode receives Kubeflow's `NB_PREFIX` through `--base-path`, restricts the
 project picker to `/home/jovyan/srv`, and stores its SQLite database and private
@@ -166,12 +169,20 @@ Kubecode is published in two variants:
   torchaudio, and torchvision, plus NVIDIA `compute` and `utility` runtime
   capabilities.
 
-Versioned tags include Kubecode and all three bundled provider CLI versions:
+Versioned tags stay concise by using the Kubecode version and an image revision.
+The bundled OpenCode, Codex, and Claude Code versions are recorded as OCI image
+labels and remain pinned in `versions/kubeflow.env`:
 
 ```text
-docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.1-r1-opencode-1.17.20-kubeflow.2-codex-0.144.6-claude-2.1.215
-docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.1-r1-opencode-1.17.20-kubeflow.2-codex-0.144.6-claude-2.1.215-cuda-13.0-pytorch-2.10.0
+docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.1-r2
+docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.1-r2-cuda-13.0-pytorch-2.10.0
 ```
+
+Treat the image revision as the revision of the complete Kubecode tool bundle.
+Increment it whenever Kubecode, OpenCode, system packages, or other bundled
+runtime behavior changes without changing `KUBECODE_VERSION`. The version
+update script increments it automatically when the pinned Codex or Claude Code
+binary changes.
 
 Mount the user PVC at `/home/jovyan/srv`. The initialization step keeps
 Kubecode, OpenCode, Codex, and Claude state under the persistent `.state`

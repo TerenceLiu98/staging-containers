@@ -36,6 +36,15 @@ LATEST_PYPI_PACKAGES = {
     "DEEPSPEED_VERSION": "deepspeed",
 }
 
+KUBECODE_BUNDLE_KEYS = (
+    "CODEX_CLI_VERSION",
+    "CODEX_CLI_SHA256_AMD64",
+    "CODEX_CLI_SHA256_ARM64",
+    "CLAUDE_CODE_VERSION",
+    "CLAUDE_CODE_SHA256_AMD64",
+    "CLAUDE_CODE_SHA256_ARM64",
+)
+
 
 class LinkParser(HTMLParser):
     def __init__(self):
@@ -268,6 +277,19 @@ def write_env(path, values):
     path.write_text("\n".join(lines) + "\n")
 
 
+def bump_kubecode_image_revision(current, updates):
+    if not any(
+        key in updates and updates[key] != current.get(key)
+        for key in KUBECODE_BUNDLE_KEYS
+    ):
+        return
+
+    revision = current.get("KUBECODE_IMAGE_REVISION", "")
+    if not revision.isdigit():
+        raise RuntimeError(f"Invalid KUBECODE_IMAGE_REVISION: {revision!r}")
+    updates["KUBECODE_IMAGE_REVISION"] = str(int(revision) + 1)
+
+
 def update_versions(current, include_code_server):
     updates = {}
     if include_code_server:
@@ -424,6 +446,7 @@ def main():
     path = Path(args.file)
     current = read_env(path)
     updates = update_versions(current, include_code_server=not args.skip_code_server)
+    bump_kubecode_image_revision(current, updates)
 
     if args.print_only:
         for key in sorted(updates):

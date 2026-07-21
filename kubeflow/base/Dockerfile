@@ -46,6 +46,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     locales \
     lsb-release \
     nano \
+    openssh-client \
     software-properties-common \
     tzdata \
     unzip \
@@ -54,7 +55,6 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     xz-utils \
     zip \
     sudo \
-    ssh \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
