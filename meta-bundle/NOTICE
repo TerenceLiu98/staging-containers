@@ -1,0 +1,13 @@
+meta-bundle
+===========
+
+This container image combines separately maintained upstream components:
+
+* Mihomo, Copyright its contributors, licensed under GPL-3.0.
+  Source: https://github.com/MetaCubeX/mihomo
+* zashboard, Copyright its contributors, licensed under MIT.
+  Source: https://github.com/Zephyruso/zashboard
+
+The corresponding license texts are installed next to this NOTICE file under
+/usr/share/licenses/meta-bundle. The complete build recipe for this image is
+available at https://github.com/TerenceLiu98/staging-containers.

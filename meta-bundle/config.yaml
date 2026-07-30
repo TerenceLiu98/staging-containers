@@ -1,0 +1,18 @@
+mixed-port: 7890
+allow-lan: true
+bind-address: "*"
+mode: rule
+log-level: info
+ipv6: false
+
+external-controller: 0.0.0.0:9090
+secret: ""
+external-ui: /usr/share/zashboard
+external-ui-url: https://github.com/Zephyruso/zashboard/releases/download/@ZASHBOARD_VERSION@/dist.zip
+
+profile:
+  store-selected: true
+  store-fake-ip: true
+
+rules:
+  - MATCH,DIRECT

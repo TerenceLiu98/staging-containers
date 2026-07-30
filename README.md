@@ -6,6 +6,25 @@
 1. To build the image in local environment, please follow the `Makefile`
 2. To build the image with github action, please check `./.github/workflows/`
 
+## Meta Bundle
+
+`terencelau/meta-bundle` combines the Mihomo core and zashboard in one
+multi-architecture image. It starts a mixed proxy on port `7890` and serves the
+controller and dashboard at `http://<host>:9090/ui/`.
+
+```bash
+docker run -d \
+  --name meta-bundle \
+  --restart unless-stopped \
+  -p 7890:7890 \
+  -p 9090:9090 \
+  -v meta-bundle-data:/root/.config/mihomo \
+  terencelau/meta-bundle:latest
+```
+
+Pinned component versions, custom configuration, Compose, TUN, and local build
+instructions are documented in [`meta-bundle/README.md`](meta-bundle/README.md).
+
 ## Kubeflow Image Versions
 
 Kubeflow image versions are pinned in `versions/kubeflow.env`. The local
