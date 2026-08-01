@@ -48,7 +48,7 @@ Override a version locally:
 make -C kubeflow build-code-server CODESERVER_VERSION=4.103.2
 make -C kubeflow build-opencode OPENCODE_VERSION=1.17.20-kubeflow.2
 make -C kubeflow build-opencode-cuda-pytorch CUDA_VERSION=13.0 PYTORCH_VERSION=2.10.0 PYTORCH_CUDA_INDEX=cu130
-make -C kubeflow build-kubecode KUBECODE_VERSION=0.1.1
+make -C kubeflow build-kubecode KUBECODE_VERSION=0.1.2
 make -C kubeflow build-kubecode-cuda-pytorch CUDA_VERSION=13.0 PYTORCH_VERSION=2.10.0 PYTORCH_CUDA_INDEX=cu130
 make -C kubeflow build-code-server-llm VLLM_VERSION=0.19.1 XFORMERS_VERSION=0.0.34
 make -C kubeflow build-jupyter-cuda-pytorch CUDA_VERSION=13.0 PYTORCH_VERSION=2.10.0 PYTORCH_CUDA_INDEX=cu130
@@ -193,8 +193,8 @@ The bundled OpenCode, Codex, and Claude Code versions are recorded as OCI image
 labels and remain pinned in `versions/kubeflow.env`:
 
 ```text
-docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.1-r2
-docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.1-r2-cuda-13.0-pytorch-2.10.0
+docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.2-r3
+docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.2-r3-cuda-13.0-pytorch-2.10.0
 ```
 
 Treat the image revision as the revision of the complete Kubecode tool bundle.

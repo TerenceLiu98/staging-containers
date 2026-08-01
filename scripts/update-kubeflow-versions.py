@@ -37,6 +37,7 @@ LATEST_PYPI_PACKAGES = {
 }
 
 KUBECODE_BUNDLE_KEYS = (
+    "KUBECODE_VERSION",
     "CODEX_CLI_VERSION",
     "CODEX_CLI_SHA256_AMD64",
     "CODEX_CLI_SHA256_ARM64",
@@ -98,6 +99,17 @@ def latest_code_server_version():
     data = fetch_json(GITHUB_RELEASE_URL.format(repo="coder/code-server"))
     tag = data["tag_name"]
     return tag.removeprefix("v")
+
+
+def latest_kubecode_release():
+    release = fetch_json(GITHUB_RELEASE_URL.format(repo="Bayes-Cluster/kubecode"))
+    tag = release["tag_name"]
+    if not tag.startswith("v"):
+        raise RuntimeError(f"Unexpected Kubecode release tag: {tag}")
+    version = tag.removeprefix("v")
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
+        raise RuntimeError(f"Invalid Kubecode version: {version}")
+    return {"KUBECODE_VERSION": version}
 
 
 def release_asset_sha256(release, asset_name):
@@ -294,6 +306,7 @@ def update_versions(current, include_code_server):
     updates = {}
     if include_code_server:
         updates["CODESERVER_VERSION"] = latest_code_server_version()
+    updates.update(latest_kubecode_release())
     updates.update(latest_codex_cli_release())
     updates.update(latest_claude_code_release())
 

@@ -8,6 +8,11 @@ on:
         required: true
         default: auto
         type: string
+      kubecode_version:
+        description: Use "latest", "auto", "keep", or a concrete version like 0.1.2.
+        required: false
+        default: auto
+        type: string
       jupyter_version:
         description: Optional Jupyter Notebook version override.
         required: false
@@ -81,6 +86,7 @@ jobs:
       - name: Update version file
         env:
           INPUT_CODE_SERVER_VERSION: ${{ inputs.code_server_version }}
+          INPUT_KUBECODE_VERSION: ${{ inputs.kubecode_version }}
           INPUT_JUPYTER_VERSION: ${{ inputs.jupyter_version }}
           INPUT_JUPYTERLAB_VERSION: ${{ inputs.jupyterlab_version }}
           INPUT_PYTHON_VERSION: ${{ inputs.python_version }}
@@ -95,7 +101,8 @@ jobs:
           set -euo pipefail
 
           code_server_version="${INPUT_CODE_SERVER_VERSION:-auto}"
-          if [ "${GITHUB_EVENT_NAME}" = "schedule" ] || [ "${code_server_version}" = "auto" ]; then
+          kubecode_version="${INPUT_KUBECODE_VERSION:-auto}"
+          if [ "${GITHUB_EVENT_NAME}" = "schedule" ] || [ "${code_server_version}" = "auto" ] || [ "${kubecode_version}" = "auto" ]; then
             python3 scripts/update-kubeflow-versions.py \
               --file "${VERSION_FILE}" \
               --write-llm-matrix versions/code-server-llm-matrix.json \
@@ -118,6 +125,14 @@ jobs:
 
           if [ "${code_server_version}" != "keep" ]; then
             update_var CODESERVER_VERSION "${code_server_version}"
+          fi
+
+          if [ "${kubecode_version}" != "keep" ]; then
+            if [ "${kubecode_version}" = "latest" ]; then
+              kubecode_version="$(curl -fsSL https://api.github.com/repos/Bayes-Cluster/kubecode/releases/latest | jq -r '.tag_name')"
+              kubecode_version="${kubecode_version#v}"
+            fi
+            update_var KUBECODE_VERSION "${kubecode_version}"
           fi
 
           update_var JUPYTER_VERSION "${INPUT_JUPYTER_VERSION:-}"
