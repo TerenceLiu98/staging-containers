@@ -23,6 +23,11 @@ PYTORCH_VERSION ?= 2.10.0
 TORCHAUDIO_VERSION ?= 2.10.0
 TORCHVISION_VERSION ?= 0.25.0
 CODESERVER_VERSION ?= 4.121.0
+ARCHLINUX_BASE_IMAGE ?= archlinux
+ARCHLINUX_BASE_IMAGE_VERSION ?= base-20260726.0.562117
+CODESERVER_ARCH_IMAGE_REVISION ?= 1
+NODE_VERSION ?= 22.23.2
+RUST_VERSION ?= stable
 OPENCODE_VERSION ?= 1.17.20-kubeflow.2
 KUBECODE_VERSION ?= 0.1.2
 KUBECODE_IMAGE_REVISION ?= 3
@@ -53,17 +58,18 @@ BASE_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)
 JUPYTER_BASE_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-jupyter-$(JUPYTER_VERSION)
 JUPYTER_CUDA_PYTORCH_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-jupyter-$(JUPYTER_VERSION)-cuda-$(CUDA_VERSION)-pytorch-$(PYTORCH_VERSION)
 CODESERVER_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-code-server-$(CODESERVER_VERSION)
+CODESERVER_ARCH_IMAGE_TAG := $(PROJECT_NAME)-$(ARCHLINUX_BASE_IMAGE)-code-server-$(CODESERVER_VERSION)-r$(CODESERVER_ARCH_IMAGE_REVISION)
 OPENCODE_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-opencode-$(OPENCODE_VERSION)
 OPENCODE_CUDA_PYTORCH_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-opencode-$(OPENCODE_VERSION)-cuda-$(CUDA_VERSION)-pytorch-$(PYTORCH_VERSION)
 KUBECODE_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-kubecode-$(KUBECODE_VERSION)-r$(KUBECODE_IMAGE_REVISION)
 KUBECODE_CUDA_PYTORCH_IMAGE_TAG := $(KUBECODE_IMAGE_TAG)-cuda-$(CUDA_VERSION)-pytorch-$(PYTORCH_VERSION)
 CODESERVER_LLM_IMAGE_TAG := $(PROJECT_NAME)-code-server-llm-cuda-$(CUDA_VERSION)-torch-$(PYTORCH_VERSION)-vllm-$(VLLM_VERSION)
 
-.PHONY: all build-base push-base build-jupyter-base push-jupyter-base build-jupyter-cuda-pytorch push-jupyter-cuda-pytorch build-code-server build-opencode build-opencode-cuda-pytorch build-kubecode build-kubecode-cuda-pytorch build-code-server-llm push-code-server push-opencode push-opencode-cuda-pytorch push-kubecode push-kubecode-cuda-pytorch push-code-server-llm
+.PHONY: all build-base push-base build-jupyter-base push-jupyter-base build-jupyter-cuda-pytorch push-jupyter-cuda-pytorch build-code-server build-code-server-arch build-opencode build-opencode-cuda-pytorch build-kubecode build-kubecode-cuda-pytorch build-code-server-llm push-code-server push-code-server-arch push-opencode push-opencode-cuda-pytorch push-kubecode push-kubecode-cuda-pytorch push-code-server-llm
 
 # Default target
-build-all: build-base build-jupyter-base build-jupyter-cuda-pytorch build-code-server build-opencode build-opencode-cuda-pytorch build-kubecode build-kubecode-cuda-pytorch build-code-server-llm
-push-all: push-base push-jupyter-base push-jupyter-cuda-pytorch push-code-server push-opencode push-opencode-cuda-pytorch push-kubecode push-kubecode-cuda-pytorch push-code-server-llm
+build-all: build-base build-jupyter-base build-jupyter-cuda-pytorch build-code-server build-code-server-arch build-opencode build-opencode-cuda-pytorch build-kubecode build-kubecode-cuda-pytorch build-code-server-llm
+push-all: push-base push-jupyter-base push-jupyter-cuda-pytorch push-code-server push-code-server-arch push-opencode push-opencode-cuda-pytorch push-kubecode push-kubecode-cuda-pytorch push-code-server-llm
 
 # Build base image
 build-base:
@@ -150,6 +156,25 @@ build-code-server:
 push-code-server:
 	$(CONTAINER_CLI) push $(IMAGE_NAME):$(CODESERVER_IMAGE_TAG)
 	$(CONTAINER_CLI) push $(IMAGE_NAME):latest-code-server
+
+build-code-server-arch:
+	$(CONTAINER_CLI) build \
+		-f code-server-arch/Dockerfile \
+		-t $(IMAGE_NAME):$(CODESERVER_ARCH_IMAGE_TAG) \
+		--build-arg TARGETPLATFORM=$(TARGETPLATFORM) \
+		--build-arg ARCHLINUX_BASE_IMAGE=$(ARCHLINUX_BASE_IMAGE) \
+		--build-arg ARCHLINUX_BASE_IMAGE_VERSION=$(ARCHLINUX_BASE_IMAGE_VERSION) \
+		--build-arg CODESERVER_VERSION=$(CODESERVER_VERSION) \
+		--build-arg UV_VERSION=$(UV_VERSION) \
+		--build-arg PYTHON_VERSION=$(PYTHON_VERSION) \
+		--build-arg NODE_VERSION=$(NODE_VERSION) \
+		--build-arg RUST_VERSION=$(RUST_VERSION) \
+		code-server-arch
+	$(CONTAINER_CLI) tag $(IMAGE_NAME):$(CODESERVER_ARCH_IMAGE_TAG) $(IMAGE_NAME):latest-code-server-arch
+
+push-code-server-arch:
+	$(CONTAINER_CLI) push $(IMAGE_NAME):$(CODESERVER_ARCH_IMAGE_TAG)
+	$(CONTAINER_CLI) push $(IMAGE_NAME):latest-code-server-arch
 
 build-opencode: build-base
 	$(CONTAINER_CLI) build \

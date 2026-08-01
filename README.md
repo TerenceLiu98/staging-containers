@@ -46,6 +46,7 @@ Override a version locally:
 
 ```bash
 make -C kubeflow build-code-server CODESERVER_VERSION=4.103.2
+make -C kubeflow build-code-server-arch NODE_VERSION=22.23.2 RUST_VERSION=stable
 make -C kubeflow build-opencode OPENCODE_VERSION=1.17.20-kubeflow.2
 make -C kubeflow build-opencode-cuda-pytorch CUDA_VERSION=13.0 PYTORCH_VERSION=2.10.0 PYTORCH_CUDA_INDEX=cu130
 make -C kubeflow build-kubecode KUBECODE_VERSION=0.1.2
@@ -83,6 +84,14 @@ GitHub Actions:
 The standard `kubeflow/code-server` image is the lightweight VS Code image. It
 does not use conda; it uses `uv` and installs its default Python environment
 under `/opt/code-server`.
+
+The `kubeflow/code-server-arch` image is the Arch Linux development image. It
+uses `archlinux:base` (pinned by `ARCHLINUX_BASE_IMAGE` and
+`ARCHLINUX_BASE_IMAGE_VERSION` in `versions/kubeflow.env`), installs code-server
+from the official release tarball, and bundles the Rust toolchain (via rustup,
+`RUST_VERSION`), Node.js/npm (`NODE_VERSION`), and `uv` with its default Python
+environment under `/opt/code-server`. It is amd64-only because upstream Arch
+images ship only `linux/amd64`.
 
 Both code-server images carry a temporary WebKit workaround for
 coder/code-server#7801 by patching VSBuffer slicing in the bundled workbench.

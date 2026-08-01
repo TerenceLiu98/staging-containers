@@ -15,6 +15,7 @@ on:
           - jupyter
           - jupyter-cuda-pytorch
           - code-server
+          - code-server-arch
           - opencode
           - opencode-cuda-pytorch
           - kubecode
@@ -42,6 +43,16 @@ on:
         type: string
       code_server_version:
         description: Override CODESERVER_VERSION from versions/kubeflow.env.
+        required: false
+        default: ""
+        type: string
+      node_version:
+        description: Override NODE_VERSION from versions/kubeflow.env.
+        required: false
+        default: ""
+        type: string
+      rust_version:
+        description: Override RUST_VERSION from versions/kubeflow.env.
         required: false
         default: ""
         type: string
@@ -152,6 +163,8 @@ jobs:
           INPUT_REGISTRY_PREFIX: ${{ inputs.registry_prefix }}
           INPUT_TARGET_PLATFORM: ${{ inputs.target_platform }}
           INPUT_CODE_SERVER_VERSION: ${{ inputs.code_server_version }}
+          INPUT_NODE_VERSION: ${{ inputs.node_version }}
+          INPUT_RUST_VERSION: ${{ inputs.rust_version }}
           INPUT_OPENCODE_VERSION: ${{ inputs.opencode_version }}
           INPUT_KUBECODE_VERSION: ${{ inputs.kubecode_version }}
           INPUT_JUPYTER_VERSION: ${{ inputs.jupyter_version }}
@@ -177,6 +190,12 @@ jobs:
 
           if [ -n "${INPUT_CODE_SERVER_VERSION:-}" ]; then
             CODESERVER_VERSION="${INPUT_CODE_SERVER_VERSION}"
+          fi
+          if [ -n "${INPUT_NODE_VERSION:-}" ]; then
+            NODE_VERSION="${INPUT_NODE_VERSION}"
+          fi
+          if [ -n "${INPUT_RUST_VERSION:-}" ]; then
+            RUST_VERSION="${INPUT_RUST_VERSION}"
           fi
           if [ -n "${INPUT_OPENCODE_VERSION:-}" ]; then
             OPENCODE_VERSION="${INPUT_OPENCODE_VERSION}"
@@ -236,6 +255,7 @@ jobs:
           JUPYTER_BASE_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-jupyter-${JUPYTER_VERSION}"
           JUPYTER_CUDA_PYTORCH_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-jupyter-${JUPYTER_VERSION}-cuda-${CUDA_VERSION}-pytorch-${PYTORCH_VERSION}"
           CODESERVER_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-code-server-${CODESERVER_VERSION}"
+          CODESERVER_ARCH_IMAGE_TAG="${PROJECT_NAME}-${ARCHLINUX_BASE_IMAGE}-code-server-${CODESERVER_VERSION}-r${CODESERVER_ARCH_IMAGE_REVISION}"
           OPENCODE_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-opencode-${OPENCODE_VERSION}"
           OPENCODE_CUDA_PYTORCH_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-opencode-${OPENCODE_VERSION}-cuda-${CUDA_VERSION}-pytorch-${PYTORCH_VERSION}"
           KUBECODE_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-kubecode-${KUBECODE_VERSION}-r${KUBECODE_IMAGE_REVISION}"
@@ -267,6 +287,11 @@ jobs:
             echo "TORCHAUDIO_VERSION=${TORCHAUDIO_VERSION}"
             echo "TORCHVISION_VERSION=${TORCHVISION_VERSION}"
             echo "CODESERVER_VERSION=${CODESERVER_VERSION}"
+            echo "ARCHLINUX_BASE_IMAGE=${ARCHLINUX_BASE_IMAGE}"
+            echo "ARCHLINUX_BASE_IMAGE_VERSION=${ARCHLINUX_BASE_IMAGE_VERSION}"
+            echo "CODESERVER_ARCH_IMAGE_REVISION=${CODESERVER_ARCH_IMAGE_REVISION}"
+            echo "NODE_VERSION=${NODE_VERSION}"
+            echo "RUST_VERSION=${RUST_VERSION}"
             echo "OPENCODE_VERSION=${OPENCODE_VERSION}"
             echo "KUBECODE_VERSION=${KUBECODE_VERSION}"
             echo "KUBECODE_IMAGE_REVISION=${KUBECODE_IMAGE_REVISION}"
@@ -294,6 +319,7 @@ jobs:
             echo "JUPYTER_BASE_IMAGE_TAG=${JUPYTER_BASE_IMAGE_TAG}"
             echo "JUPYTER_CUDA_PYTORCH_IMAGE_TAG=${JUPYTER_CUDA_PYTORCH_IMAGE_TAG}"
             echo "CODESERVER_IMAGE_TAG=${CODESERVER_IMAGE_TAG}"
+            echo "CODESERVER_ARCH_IMAGE_TAG=${CODESERVER_ARCH_IMAGE_TAG}"
             echo "OPENCODE_IMAGE_TAG=${OPENCODE_IMAGE_TAG}"
             echo "OPENCODE_CUDA_PYTORCH_IMAGE_TAG=${OPENCODE_CUDA_PYTORCH_IMAGE_TAG}"
             echo "KUBECODE_IMAGE_TAG=${KUBECODE_IMAGE_TAG}"
@@ -407,6 +433,26 @@ jobs:
               --build-arg "TORCHVISION_VERSION=${TORCHVISION_VERSION}" \
               --build-arg "PYTORCH_CUDA_INDEX=${PYTORCH_CUDA_INDEX}" \
               kubeflow/code-server
+          }
+
+          build_code_server_arch() {
+            docker buildx build \
+              --platform "${TARGETPLATFORM}" \
+              --file kubeflow/code-server-arch/Dockerfile \
+              --tag "${IMAGE_NAME}:${CODESERVER_ARCH_IMAGE_TAG}" \
+              --tag "${IMAGE_NAME}:latest-code-server-arch" \
+              --cache-from "type=gha,scope=kubeflow-code-server-arch" \
+              --cache-to "type=gha,mode=max,scope=kubeflow-code-server-arch" \
+              "${OUTPUT_ARGS[@]}" \
+              --build-arg "TARGETPLATFORM=${TARGETPLATFORM}" \
+              --build-arg "ARCHLINUX_BASE_IMAGE=${ARCHLINUX_BASE_IMAGE}" \
+              --build-arg "ARCHLINUX_BASE_IMAGE_VERSION=${ARCHLINUX_BASE_IMAGE_VERSION}" \
+              --build-arg "CODESERVER_VERSION=${CODESERVER_VERSION}" \
+              --build-arg "UV_VERSION=${UV_VERSION}" \
+              --build-arg "PYTHON_VERSION=${PYTHON_VERSION}" \
+              --build-arg "NODE_VERSION=${NODE_VERSION}" \
+              --build-arg "RUST_VERSION=${RUST_VERSION}" \
+              kubeflow/code-server-arch
           }
 
           build_opencode() {
@@ -530,6 +576,7 @@ jobs:
               build_jupyter
               build_jupyter_cuda_pytorch
               build_code_server
+              build_code_server_arch
               build_opencode
               build_opencode_cuda_pytorch
               build_kubecode
@@ -549,6 +596,9 @@ jobs:
               ;;
             code-server)
               build_code_server
+              ;;
+            code-server-arch)
+              build_code_server_arch
               ;;
             opencode)
               build_base
