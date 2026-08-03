@@ -71,6 +71,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     fd-find \
     git \
     git-lfs \
+    gh \
     htop \
     iproute2 \
     iputils-ping \
@@ -104,6 +105,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     zip \
  && ln -sf /usr/bin/fdfind /usr/local/bin/fd \
  && git lfs install --system \
+ && gh --version \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 

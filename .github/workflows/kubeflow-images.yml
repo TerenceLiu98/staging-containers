@@ -20,6 +20,8 @@ on:
           - opencode-cuda-pytorch
           - kubecode
           - kubecode-cuda-pytorch
+          - kubecode-edge
+          - kubecode-edge-cuda-pytorch
           - code-server-llm
       push_images:
         description: Push images to the registry.
@@ -258,8 +260,11 @@ jobs:
           CODESERVER_ARCH_IMAGE_TAG="${PROJECT_NAME}-${ARCHLINUX_BASE_IMAGE}-code-server-${CODESERVER_VERSION}-r${CODESERVER_ARCH_IMAGE_REVISION}"
           OPENCODE_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-opencode-${OPENCODE_VERSION}"
           OPENCODE_CUDA_PYTORCH_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-opencode-${OPENCODE_VERSION}-cuda-${CUDA_VERSION}-pytorch-${PYTORCH_VERSION}"
+          OPENCODE_EDGE_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-opencode-edge-${EDGE_OPENCODE_VERSION}"
           KUBECODE_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-kubecode-${KUBECODE_VERSION}-r${KUBECODE_IMAGE_REVISION}"
           KUBECODE_CUDA_PYTORCH_IMAGE_TAG="${KUBECODE_IMAGE_TAG}-cuda-${CUDA_VERSION}-pytorch-${PYTORCH_VERSION}"
+          KUBECODE_EDGE_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-kubecode-${KUBECODE_VERSION}-edge-r${KUBECODE_EDGE_IMAGE_REVISION}"
+          KUBECODE_EDGE_CUDA_PYTORCH_IMAGE_TAG="${KUBECODE_EDGE_IMAGE_TAG}-cuda-${CUDA_VERSION}-pytorch-${PYTORCH_VERSION}"
           CODESERVER_LLM_IMAGE_TAG="${PROJECT_NAME}-code-server-llm-cuda-${CUDA_VERSION}-torch-${PYTORCH_VERSION}-vllm-${VLLM_VERSION}"
 
           REGISTRY_HOST="${REGISTRY_PREFIX%%/*}"
@@ -295,12 +300,20 @@ jobs:
             echo "OPENCODE_VERSION=${OPENCODE_VERSION}"
             echo "KUBECODE_VERSION=${KUBECODE_VERSION}"
             echo "KUBECODE_IMAGE_REVISION=${KUBECODE_IMAGE_REVISION}"
+            echo "KUBECODE_EDGE_IMAGE_REVISION=${KUBECODE_EDGE_IMAGE_REVISION}"
             echo "CODEX_CLI_VERSION=${CODEX_CLI_VERSION}"
             echo "CODEX_CLI_SHA256_AMD64=${CODEX_CLI_SHA256_AMD64}"
             echo "CODEX_CLI_SHA256_ARM64=${CODEX_CLI_SHA256_ARM64}"
             echo "CLAUDE_CODE_VERSION=${CLAUDE_CODE_VERSION}"
             echo "CLAUDE_CODE_SHA256_AMD64=${CLAUDE_CODE_SHA256_AMD64}"
             echo "CLAUDE_CODE_SHA256_ARM64=${CLAUDE_CODE_SHA256_ARM64}"
+            echo "EDGE_OPENCODE_VERSION=${EDGE_OPENCODE_VERSION}"
+            echo "EDGE_CODEX_CLI_VERSION=${EDGE_CODEX_CLI_VERSION}"
+            echo "EDGE_CODEX_CLI_SHA256_AMD64=${EDGE_CODEX_CLI_SHA256_AMD64}"
+            echo "EDGE_CODEX_CLI_SHA256_ARM64=${EDGE_CODEX_CLI_SHA256_ARM64}"
+            echo "EDGE_CLAUDE_CODE_VERSION=${EDGE_CLAUDE_CODE_VERSION}"
+            echo "EDGE_CLAUDE_CODE_SHA256_AMD64=${EDGE_CLAUDE_CODE_SHA256_AMD64}"
+            echo "EDGE_CLAUDE_CODE_SHA256_ARM64=${EDGE_CLAUDE_CODE_SHA256_ARM64}"
             echo "UV_VERSION=${UV_VERSION}"
             echo "LLM_BASE_IMAGE=${LLM_BASE_IMAGE}"
             echo "PYTORCH_CUDA_INDEX=${PYTORCH_CUDA_INDEX}"
@@ -322,8 +335,11 @@ jobs:
             echo "CODESERVER_ARCH_IMAGE_TAG=${CODESERVER_ARCH_IMAGE_TAG}"
             echo "OPENCODE_IMAGE_TAG=${OPENCODE_IMAGE_TAG}"
             echo "OPENCODE_CUDA_PYTORCH_IMAGE_TAG=${OPENCODE_CUDA_PYTORCH_IMAGE_TAG}"
+            echo "OPENCODE_EDGE_IMAGE_TAG=${OPENCODE_EDGE_IMAGE_TAG}"
             echo "KUBECODE_IMAGE_TAG=${KUBECODE_IMAGE_TAG}"
             echo "KUBECODE_CUDA_PYTORCH_IMAGE_TAG=${KUBECODE_CUDA_PYTORCH_IMAGE_TAG}"
+            echo "KUBECODE_EDGE_IMAGE_TAG=${KUBECODE_EDGE_IMAGE_TAG}"
+            echo "KUBECODE_EDGE_CUDA_PYTORCH_IMAGE_TAG=${KUBECODE_EDGE_CUDA_PYTORCH_IMAGE_TAG}"
             echo "CODESERVER_LLM_IMAGE_TAG=${CODESERVER_LLM_IMAGE_TAG}"
           } >> "${GITHUB_ENV}"
 
@@ -493,6 +509,23 @@ jobs:
               kubeflow/opencode-cuda-pytorch
           }
 
+          build_opencode_edge() {
+            docker buildx build \
+              --platform "${TARGETPLATFORM}" \
+              --file kubeflow/opencode/Dockerfile \
+              --tag "${IMAGE_NAME}:${OPENCODE_EDGE_IMAGE_TAG}" \
+              --tag "${IMAGE_NAME}:latest-opencode-edge" \
+              --cache-from "type=gha,scope=kubeflow-opencode-edge" \
+              --cache-to "type=gha,mode=max,scope=kubeflow-opencode-edge" \
+              "${OUTPUT_ARGS[@]}" \
+              --build-arg "TARGETPLATFORM=${TARGETPLATFORM}" \
+              --build-arg "BASE_IMAGE_TAG=${BASE_IMAGE_TAG}" \
+              --build-arg "PROJECT_NAME=${PROJECT_NAME}" \
+              --build-arg "REGISTRY_PREFIX=${REGISTRY_PREFIX}" \
+              --build-arg "OPENCODE_VERSION=${EDGE_OPENCODE_VERSION}" \
+              kubeflow/opencode
+          }
+
           build_kubecode() {
             docker buildx build \
               --platform "${TARGETPLATFORM}" \
@@ -529,6 +562,53 @@ jobs:
               "${OUTPUT_ARGS[@]}" \
               --build-arg "TARGETPLATFORM=${TARGETPLATFORM}" \
               --build-arg "KUBECODE_IMAGE_TAG=${KUBECODE_IMAGE_TAG}" \
+              --build-arg "PROJECT_NAME=${PROJECT_NAME}" \
+              --build-arg "REGISTRY_PREFIX=${REGISTRY_PREFIX}" \
+              --build-arg "CUDA_VERSION=${CUDA_VERSION}" \
+              --build-arg "PYTORCH_VERSION=${PYTORCH_VERSION}" \
+              --build-arg "TORCHAUDIO_VERSION=${TORCHAUDIO_VERSION}" \
+              --build-arg "TORCHVISION_VERSION=${TORCHVISION_VERSION}" \
+              --build-arg "PYTORCH_CUDA_INDEX=${PYTORCH_CUDA_INDEX}" \
+              kubeflow/kubecode-cuda-pytorch
+          }
+
+          build_kubecode_edge() {
+            docker buildx build \
+              --platform "${TARGETPLATFORM}" \
+              --file kubeflow/kubecode/Dockerfile \
+              --tag "${IMAGE_NAME}:${KUBECODE_EDGE_IMAGE_TAG}" \
+              --tag "${IMAGE_NAME}:latest-kubecode-edge" \
+              --cache-from "type=gha,scope=kubeflow-kubecode-edge" \
+              --cache-to "type=gha,mode=max,scope=kubeflow-kubecode-edge" \
+              "${OUTPUT_ARGS[@]}" \
+              --build-arg "TARGETPLATFORM=${TARGETPLATFORM}" \
+              --build-arg "OPENCODE_IMAGE_TAG=${OPENCODE_EDGE_IMAGE_TAG}" \
+              --build-arg "PROJECT_NAME=${PROJECT_NAME}" \
+              --build-arg "REGISTRY_PREFIX=${REGISTRY_PREFIX}" \
+              --build-arg "KUBECODE_VERSION=${KUBECODE_VERSION}" \
+              --build-arg "KUBECODE_IMAGE_REVISION=${KUBECODE_EDGE_IMAGE_REVISION}" \
+              --build-arg "KUBECODE_CHANNEL=edge" \
+              --build-arg "OPENCODE_VERSION=${EDGE_OPENCODE_VERSION}" \
+              --build-arg "CODEX_CLI_VERSION=${EDGE_CODEX_CLI_VERSION}" \
+              --build-arg "CODEX_CLI_SHA256_AMD64=${EDGE_CODEX_CLI_SHA256_AMD64}" \
+              --build-arg "CODEX_CLI_SHA256_ARM64=${EDGE_CODEX_CLI_SHA256_ARM64}" \
+              --build-arg "CLAUDE_CODE_VERSION=${EDGE_CLAUDE_CODE_VERSION}" \
+              --build-arg "CLAUDE_CODE_SHA256_AMD64=${EDGE_CLAUDE_CODE_SHA256_AMD64}" \
+              --build-arg "CLAUDE_CODE_SHA256_ARM64=${EDGE_CLAUDE_CODE_SHA256_ARM64}" \
+              kubeflow/kubecode
+          }
+
+          build_kubecode_edge_cuda_pytorch() {
+            docker buildx build \
+              --platform "${TARGETPLATFORM}" \
+              --file kubeflow/kubecode-cuda-pytorch/Dockerfile \
+              --tag "${IMAGE_NAME}:${KUBECODE_EDGE_CUDA_PYTORCH_IMAGE_TAG}" \
+              --tag "${IMAGE_NAME}:latest-kubecode-edge-cuda-pytorch" \
+              --cache-from "type=gha,scope=kubeflow-kubecode-edge-cuda-pytorch" \
+              --cache-to "type=gha,mode=max,scope=kubeflow-kubecode-edge-cuda-pytorch" \
+              "${OUTPUT_ARGS[@]}" \
+              --build-arg "TARGETPLATFORM=${TARGETPLATFORM}" \
+              --build-arg "KUBECODE_IMAGE_TAG=${KUBECODE_EDGE_IMAGE_TAG}" \
               --build-arg "PROJECT_NAME=${PROJECT_NAME}" \
               --build-arg "REGISTRY_PREFIX=${REGISTRY_PREFIX}" \
               --build-arg "CUDA_VERSION=${CUDA_VERSION}" \
@@ -581,6 +661,9 @@ jobs:
               build_opencode_cuda_pytorch
               build_kubecode
               build_kubecode_cuda_pytorch
+              build_opencode_edge
+              build_kubecode_edge
+              build_kubecode_edge_cuda_pytorch
               ;;
             base)
               build_base
@@ -619,6 +702,17 @@ jobs:
               build_opencode
               build_kubecode
               build_kubecode_cuda_pytorch
+              ;;
+            kubecode-edge)
+              build_base
+              build_opencode_edge
+              build_kubecode_edge
+              ;;
+            kubecode-edge-cuda-pytorch)
+              build_base
+              build_opencode_edge
+              build_kubecode_edge
+              build_kubecode_edge_cuda_pytorch
               ;;
             code-server-llm)
               echo "code-server-llm is built by the matrix job."

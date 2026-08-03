@@ -38,6 +38,8 @@ make -C kubeflow build-opencode
 make -C kubeflow build-opencode-cuda-pytorch
 make -C kubeflow build-kubecode
 make -C kubeflow build-kubecode-cuda-pytorch
+make -C kubeflow build-kubecode-edge
+make -C kubeflow build-kubecode-edge-cuda-pytorch
 make -C kubeflow build-code-server-llm
 make -C kubeflow build-jupyter-cuda-pytorch
 ```
@@ -72,7 +74,8 @@ GitHub Actions:
   `versions/kubeflow.env` and open a PR. Its scheduled run uses
   `scripts/update-kubeflow-versions.py` to resolve the latest compatible
   code-server, vLLM, PyTorch, CUDA wheel index, xFormers, DeepSpeed, and related
-  Python package versions. It also refreshes
+  Python package versions. It also resolves the latest stable OpenCode, Codex,
+  and Claude Code releases for the rolling Kubecode edge images and refreshes
   `versions/code-server-llm-matrix.json`.
 - CUDA and PyTorch remain explicit pins because those versions must stay
   compatible with each other.
@@ -106,7 +109,7 @@ PEFT, TRL, bitsandbytes, OpenAI, Anthropic, FastAPI, and Jupyter tooling.
 The image also includes system tools commonly needed for GPU/LLM development:
 `tmux`, `htop`, `jq`, `ripgrep`, `fd`, `tree`, `less`, `lsof`, `iproute2`,
 `net-tools`, `dnsutils`, `pciutils`, `numactl`, `procps`, `psmisc`, `git-lfs`,
-OpenMPI development packages, `cmake`, and `ninja-build`.
+GitHub CLI, OpenMPI development packages, `cmake`, and `ninja-build`.
 
 For Kubeflow or JupyterHub, mount each user's PVC at `/home/jovyan/srv`, not at
 `/home/jovyan`. The image keeps code-server configuration and default home files
@@ -119,6 +122,7 @@ directory:
 /home/jovyan/.local/share/code-server/User       -> /home/jovyan/srv/.state/code-server/User
 /home/jovyan/.local/share/code-server/extensions -> /home/jovyan/srv/.state/code-server/extensions
 /home/jovyan/.config/code-server                 -> /home/jovyan/srv/.state/code-server/config
+/home/jovyan/.config/gh                          -> /home/jovyan/srv/.state/gh
 /home/jovyan/.claude                             -> /home/jovyan/srv/.state/claude
 /home/jovyan/.codex                              -> /home/jovyan/srv/.state/codex
 ```
@@ -128,7 +132,8 @@ directory:
 The `kubeflow/opencode` image runs the forked OpenCode Web server on port 8888.
 It passes Kubeflow's `NB_PREFIX` to `opencode serve --base-path`, so the Web UI,
 API, SSE, and terminal WebSocket endpoints work behind the Notebook reverse
-proxy. The default workspace is `/home/jovyan/srv`.
+proxy. The default workspace is `/home/jovyan/srv`. GitHub CLI is part of the
+common OpenCode toolset and is inherited by all OpenCode and Kubecode variants.
 
 OpenCode is published in two variants:
 
@@ -166,6 +171,7 @@ cache, and state are linked into one persistent subtree:
 /home/jovyan/.config/opencode      -> /home/jovyan/srv/.state/opencode/config
 /home/jovyan/.cache/opencode       -> /home/jovyan/srv/.state/opencode/cache
 /home/jovyan/.local/state/opencode -> /home/jovyan/srv/.state/opencode/state
+/home/jovyan/.config/gh            -> /home/jovyan/srv/.state/gh
 ```
 
 Users can edit `~/.config/opencode/opencode.json` normally; it persists at
@@ -179,9 +185,9 @@ The `kubeflow/kubecode` image packages the pinned standalone release from
 port 8888. It inherits the regular OpenCode image, disables the standalone
 OpenCode Web service, and bundles pinned OpenCode, Codex, and Claude Code
 provider CLIs as immediately available ACP Agents inside Kubecode. It also
-includes Bubblewrap for sandboxed coding-tool execution and a compact set of
-search, patching, process, networking, and terminal diagnostics tools commonly
-used by coding agents.
+includes Bubblewrap for sandboxed coding-tool execution, the GitHub CLI, and a
+compact set of search, patching, process, networking, and terminal diagnostics
+tools commonly used by coding agents.
 
 Kubecode receives Kubeflow's `NB_PREFIX` through `--base-path`, restricts the
 project picker to `/home/jovyan/srv`, and stores its SQLite database and private
@@ -197,13 +203,21 @@ Kubecode is published in two variants:
   torchaudio, and torchvision, plus NVIDIA `compute` and `utility` runtime
   capabilities.
 
+Each variant also has an edge channel. `latest-kubecode-edge` and
+`latest-kubecode-edge-cuda-pytorch` retain the pinned Kubecode release but use
+the latest stable releases of OpenCode, Codex, and Claude Code resolved by the
+scheduled version updater. Edge revisions are independent from the regular
+image revision so both channels retain immutable versioned tags.
+
 Versioned tags stay concise by using the Kubecode version and an image revision.
 The bundled OpenCode, Codex, and Claude Code versions are recorded as OCI image
 labels and remain pinned in `versions/kubeflow.env`:
 
 ```text
-docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.2-r3
-docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.2-r3-cuda-13.0-pytorch-2.10.0
+docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.2-r4
+docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.2-r4-cuda-13.0-pytorch-2.10.0
+docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.2-edge-r1
+docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-kubecode-0.1.2-edge-r1-cuda-13.0-pytorch-2.10.0
 ```
 
 Treat the image revision as the revision of the complete Kubecode tool bundle.
@@ -221,6 +235,7 @@ subtree:
 /home/jovyan/srv/.state/opencode
 /home/jovyan/srv/.state/codex
 /home/jovyan/srv/.state/claude
+/home/jovyan/srv/.state/gh
 ```
 
 The standalone Kubecode release contains the Codex and Claude ACP adapters.

@@ -155,7 +155,8 @@ jobs:
           commit-message: "chore: update kubeflow image versions"
           title: "chore: update Kubeflow image versions"
           body: |
-            Updates `versions/kubeflow.env`.
+            Updates `versions/kubeflow.env`, including the latest stable
+            OpenCode, Codex, and Claude Code pins for the Kubecode edge channel.
 
             After this PR is merged, `.github/workflows/kubeflow-images.yml`
             will build the affected Kubeflow images from the updated pins.

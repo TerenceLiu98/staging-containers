@@ -45,6 +45,8 @@ make -C . build-opencode
 make -C . build-opencode-cuda-pytorch
 make -C . build-kubecode
 make -C . build-kubecode-cuda-pytorch
+make -C . build-kubecode-edge
+make -C . build-kubecode-edge-cuda-pytorch
 make -C . build-code-server
 make -C . build-code-server-arch
 make -C . build-code-server-llm

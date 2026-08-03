@@ -12,6 +12,7 @@ from pathlib import Path
 PYPI_URL = "https://pypi.org/pypi/{package}/json"
 GITHUB_RELEASE_URL = "https://api.github.com/repos/{repo}/releases/latest"
 CLAUDE_CODE_RELEASE_URL = "https://downloads.claude.ai/claude-code-releases"
+OPENCODE_REPOSITORY = "TerenceLiu98/opencode"
 PYTORCH_INDEX_URL = "https://download.pytorch.org/whl/{index}/torch/"
 DOCKERHUB_CUDA_TAGS_URL = "https://hub.docker.com/v2/repositories/nvidia/cuda/tags/?page_size=100&name={prefix}."
 CUDA_UBUNTU_BASES = ("ubuntu24.04", "ubuntu22.04")
@@ -44,6 +45,17 @@ KUBECODE_BUNDLE_KEYS = (
     "CLAUDE_CODE_VERSION",
     "CLAUDE_CODE_SHA256_AMD64",
     "CLAUDE_CODE_SHA256_ARM64",
+)
+
+KUBECODE_EDGE_BUNDLE_KEYS = (
+    "KUBECODE_VERSION",
+    "EDGE_OPENCODE_VERSION",
+    "EDGE_CODEX_CLI_VERSION",
+    "EDGE_CODEX_CLI_SHA256_AMD64",
+    "EDGE_CODEX_CLI_SHA256_ARM64",
+    "EDGE_CLAUDE_CODE_VERSION",
+    "EDGE_CLAUDE_CODE_SHA256_AMD64",
+    "EDGE_CLAUDE_CODE_SHA256_ARM64",
 )
 
 
@@ -110,6 +122,17 @@ def latest_kubecode_release():
     if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
         raise RuntimeError(f"Invalid Kubecode version: {version}")
     return {"KUBECODE_VERSION": version}
+
+
+def latest_opencode_release():
+    release = fetch_json(GITHUB_RELEASE_URL.format(repo=OPENCODE_REPOSITORY))
+    tag = release["tag_name"]
+    if not tag.startswith("v"):
+        raise RuntimeError(f"Unexpected OpenCode release tag: {tag}")
+    version = tag.removeprefix("v")
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9.]+)?", version):
+        raise RuntimeError(f"Invalid OpenCode version: {version}")
+    return version
 
 
 def release_asset_sha256(release, asset_name):
@@ -289,17 +312,32 @@ def write_env(path, values):
     path.write_text("\n".join(lines) + "\n")
 
 
-def bump_kubecode_image_revision(current, updates):
+def bump_image_revision(current, updates, bundle_keys, revision_key):
     if not any(
         key in updates and updates[key] != current.get(key)
-        for key in KUBECODE_BUNDLE_KEYS
+        for key in bundle_keys
     ):
         return
 
-    revision = current.get("KUBECODE_IMAGE_REVISION", "")
+    revision = current.get(revision_key, "")
     if not revision.isdigit():
-        raise RuntimeError(f"Invalid KUBECODE_IMAGE_REVISION: {revision!r}")
-    updates["KUBECODE_IMAGE_REVISION"] = str(int(revision) + 1)
+        raise RuntimeError(f"Invalid {revision_key}: {revision!r}")
+    updates[revision_key] = str(int(revision) + 1)
+
+
+def bump_kubecode_image_revisions(current, updates):
+    bump_image_revision(
+        current,
+        updates,
+        KUBECODE_BUNDLE_KEYS,
+        "KUBECODE_IMAGE_REVISION",
+    )
+    bump_image_revision(
+        current,
+        updates,
+        KUBECODE_EDGE_BUNDLE_KEYS,
+        "KUBECODE_EDGE_IMAGE_REVISION",
+    )
 
 
 def update_versions(current, include_code_server):
@@ -307,8 +345,13 @@ def update_versions(current, include_code_server):
     if include_code_server:
         updates["CODESERVER_VERSION"] = latest_code_server_version()
     updates.update(latest_kubecode_release())
-    updates.update(latest_codex_cli_release())
-    updates.update(latest_claude_code_release())
+    updates["EDGE_OPENCODE_VERSION"] = latest_opencode_release()
+    updates.update(
+        {f"EDGE_{key}": value for key, value in latest_codex_cli_release().items()}
+    )
+    updates.update(
+        {f"EDGE_{key}": value for key, value in latest_claude_code_release().items()}
+    )
 
     vllm_data = fetch_json(PYPI_URL.format(package="vllm"))
     vllm_versions = sorted(
@@ -459,7 +502,7 @@ def main():
     path = Path(args.file)
     current = read_env(path)
     updates = update_versions(current, include_code_server=not args.skip_code_server)
-    bump_kubecode_image_revision(current, updates)
+    bump_kubecode_image_revisions(current, updates)
 
     if args.print_only:
         for key in sorted(updates):

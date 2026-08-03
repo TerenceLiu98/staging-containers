@@ -49,6 +49,7 @@ RUN pacman -Syu --noconfirm \
     file \
     git \
     git-lfs \
+    github-cli \
     glibc-locales \
     htop \
     iproute2 \
@@ -73,6 +74,7 @@ RUN pacman -Syu --noconfirm \
     xz \
     zip \
  && git lfs install --system \
+ && gh --version \
  && rm -rf /var/cache/pacman/pkg/*
 
 RUN sed -i 's/^#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen \

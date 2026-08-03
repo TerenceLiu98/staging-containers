@@ -13,6 +13,7 @@ RUN pacman -Syu --noconfirm \
     curl \
     git \
     git-lfs \
+    github-cli \
     btop \
     fastfetch \
     glibc \
@@ -32,6 +33,7 @@ RUN pacman -Syu --noconfirm \
     ffmpeg \
     ttf-jetbrains-mono-nerd \
     && git lfs install \
+    && gh --version \
     && rm -rf /var/cache/pacman/pkg/*
 
 RUN sed -i 's/#en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen \

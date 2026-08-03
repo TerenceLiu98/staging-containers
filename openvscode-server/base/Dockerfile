@@ -15,6 +15,7 @@ ARG USER_GID=$USER_UID
 RUN apt-get update && apt-get install -y --no-install-recommends \
     vim \
     git \
+    gh \
     sudo \
     libatomic1 \
     openssh-client \
@@ -39,6 +40,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxmlsec1-dev \
     tk-dev \
     liblzma-dev \
+    && gh --version \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /home/

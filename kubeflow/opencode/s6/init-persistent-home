@@ -38,6 +38,7 @@ link_persistent_dir "${HOME}/.local/share/opencode" "${OPENCODE_STATE_DIR}/data"
 link_persistent_dir "${HOME}/.config/opencode" "${OPENCODE_STATE_DIR}/config"
 link_persistent_dir "${HOME}/.cache/opencode" "${OPENCODE_STATE_DIR}/cache"
 link_persistent_dir "${HOME}/.local/state/opencode" "${OPENCODE_STATE_DIR}/state"
+link_persistent_dir "${HOME}/.config/gh" "${PERSISTENT_STATE_DIR}/gh"
 
 if [ ! -e "${HOME}/.config/opencode/opencode.json" ]; then
   printf '%s\n' '{' \

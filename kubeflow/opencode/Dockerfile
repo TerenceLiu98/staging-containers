@@ -15,6 +15,13 @@ LABEL org.opencontainers.image.source="https://github.com/${OPENCODE_REPOSITORY}
 
 USER root
 
+RUN export DEBIAN_FRONTEND=noninteractive \
+ && apt-get -yq update \
+ && apt-get -yq install --no-install-recommends gh \
+ && gh --version \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
 RUN case "${TARGETPLATFORM}" in \
       linux/amd64) OPENCODE_ASSET="opencode-linux-x64-baseline.tar.gz" ;; \
       *) echo "Unsupported OpenCode target platform: ${TARGETPLATFORM}" >&2; exit 1 ;; \

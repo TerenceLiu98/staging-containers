@@ -36,6 +36,7 @@ link_persistent_dir() {
 link_persistent_dir "${HOME}/.local/share/code-server/User" "${PERSISTENT_STATE_DIR}/code-server/User"
 link_persistent_dir "${HOME}/.local/share/code-server/extensions" "${PERSISTENT_STATE_DIR}/code-server/extensions"
 link_persistent_dir "${HOME}/.config/code-server" "${PERSISTENT_STATE_DIR}/code-server/config"
+link_persistent_dir "${HOME}/.config/gh" "${PERSISTENT_STATE_DIR}/gh"
 link_persistent_dir "${HOME}/.claude" "${PERSISTENT_STATE_DIR}/claude"
 link_persistent_dir "${HOME}/.codex" "${PERSISTENT_STATE_DIR}/codex"
 

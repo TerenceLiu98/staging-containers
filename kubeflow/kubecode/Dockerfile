@@ -8,6 +8,7 @@ FROM --platform=$TARGETPLATFORM ${REGISTRY_PREFIX}/${PROJECT_NAME}:${OPENCODE_IM
 ARG TARGETPLATFORM
 ARG KUBECODE_VERSION
 ARG KUBECODE_IMAGE_REVISION
+ARG KUBECODE_CHANNEL=stable
 ARG OPENCODE_VERSION
 ARG CODEX_CLI_VERSION
 ARG CODEX_CLI_SHA256_AMD64
@@ -21,6 +22,7 @@ LABEL org.opencontainers.image.source="https://github.com/Bayes-Cluster/kubecode
       org.opencontainers.image.licenses="AGPL-3.0-or-later" \
       org.opencontainers.image.description="Kubecode AI coding workspace for Kubeflow" \
       io.kubecode.image.revision="${KUBECODE_IMAGE_REVISION}" \
+      io.kubecode.image.channel="${KUBECODE_CHANNEL}" \
       io.kubecode.opencode.version="${OPENCODE_VERSION}" \
       io.kubecode.codex.version="${CODEX_CLI_VERSION}" \
       io.kubecode.claude-code.version="${CLAUDE_CODE_VERSION}"
@@ -47,6 +49,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
       rsync \
       tmux \
       tree \
+ && command -v bwrap \
  && bwrap --version \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
