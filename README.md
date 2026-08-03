@@ -1,5 +1,17 @@
 # Staging Container
 
+## Categories
+
+| Category | Variants | README |
+| --- | --- | --- |
+| Kubeflow | base, jupyter, jupyter-cuda-pytorch, opencode, opencode-cuda-pytorch, kubecode, kubecode-cuda-pytorch, code-server, code-server-arch, code-server-llm | [`kubeflow/README.md`](kubeflow/README.md) |
+| JupyterHub | foundation, base-notebook, mini-notebook, scipy-notebook, datascience-notebook (+ GPU chain), jupyterhub | [`jupyterhub/README.md`](jupyterhub/README.md) |
+| OpenVSCode Server | base, python, miniforge, rust | [`openvscode-server/README.md`](openvscode-server/README.md) |
+| Code Server | base | [`code-server/README.md`](code-server/README.md) |
+| Meta Bundle | meta-bundle | [`meta-bundle/README.md`](meta-bundle/README.md) |
+
+Each category README documents its image variants and how they relate to each
+other with a mermaid diagram.
 
 ## To Build 
 

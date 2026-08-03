@@ -13,9 +13,14 @@ graph TD
     opencode --> opencode_cuda[opencode-cuda-pytorch]
     opencode --> kubecode[kubecode]
     kubecode --> kubecode_cuda[kubecode-cuda-pytorch]
-    code_server[code-server]
-    code_server_arch[code-server-arch]
-    code_server_llm[code-server-llm]
+    base --> opencode_edge[opencode-edge]
+    opencode_edge --> kubecode_edge[kubecode-edge]
+    kubecode_edge --> kubecode_edge_cuda[kubecode-edge-cuda-pytorch]
+    subgraph cs["code-server family"]
+        code_server[code-server]
+        code_server_arch[code-server-arch]
+        code_server_llm[code-server-llm]
+    end
 ```
 
 - `base` - the Ubuntu 24.04 base image with s6, kubectl, conda/miniforge and the
@@ -24,14 +29,20 @@ graph TD
 - `jupyter-cuda-pytorch` - `jupyter` plus the pinned CUDA builds of PyTorch,
   torchaudio and torchvision. An alternate `Dockerfile.openvscode-server` in the
   same directory additionally bundles OpenVSCode Server.
-- `opencode` - the forked OpenCode Web server on top of `base`.
+- `opencode` - the forked OpenCode Web server and GitHub CLI on top of `base`.
 - `opencode-cuda-pytorch` - `opencode` plus the pinned CUDA PyTorch stack.
-- `kubecode` - `opencode` with Kubecode and bundled OpenCode, Codex and Claude
-  Code CLIs as ACP agents.
+- `kubecode` - `opencode` with Kubecode, Bubblewrap, GitHub CLI, and bundled
+  OpenCode, Codex and Claude Code CLIs as ACP agents.
 - `kubecode-cuda-pytorch` - `kubecode` plus the pinned CUDA PyTorch stack.
-- `code-server`, `code-server-arch`, `code-server-llm` - standalone images built
-  directly from external base images (Ubuntu, Arch Linux and NVIDIA CUDA
-  respectively); they do not share the repo base image.
+- `kubecode-edge` - the pinned Kubecode release with the latest stable
+  OpenCode, Codex and Claude Code versions resolved by automation.
+- `kubecode-edge-cuda-pytorch` - `kubecode-edge` plus the pinned CUDA PyTorch
+  stack.
+- `code-server`, `code-server-arch`, `code-server-llm` - a sibling family of
+  standalone development images with GitHub CLI. They share the same
+  code-server + uv + s6 layout but each is built directly from its own external
+  base image (Ubuntu, Arch Linux and NVIDIA CUDA respectively), so they have no
+  image inheritance between them nor from the repo `base` image.
 
 Version pins live in `../versions/kubeflow.env`. The `code-server-llm` image is
 built as a matrix from `../versions/code-server-llm-matrix.json`.

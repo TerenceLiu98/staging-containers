@@ -4,6 +4,17 @@
 UI in one container. The bundled default configuration starts a mixed proxy on
 port `7890` and serves the controller and dashboard on port `9090`.
 
+## Variants
+
+```mermaid
+graph TD
+    meta_bundle[meta-bundle]
+```
+
+`meta-bundle` is a single-variant image. Its build stage downloads the
+zashboard web UI (pinned by `ZASHBOARD_VERSION` and `ZASHBOARD_SHA256`) and
+copies it into the pinned `metacubex/mihomo` runtime image.
+
 ## Quick start
 
 ```bash
