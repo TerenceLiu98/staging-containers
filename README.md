@@ -4,7 +4,7 @@
 
 | Category | Variants | README |
 | --- | --- | --- |
-| Kubeflow | base, jupyter, jupyter-cuda-pytorch, opencode, opencode-cuda-pytorch, kubecode, kubecode-cuda-pytorch, code-server, code-server-arch, code-server-llm | [`kubeflow/README.md`](kubeflow/README.md) |
+| Kubeflow | base, jupyter, jupyter-cuda-pytorch, deepseek-harness, deepseek-harness-cuda-pytorch, opencode, opencode-cuda-pytorch, kubecode, kubecode-cuda-pytorch, code-server, code-server-arch, code-server-llm | [`kubeflow/README.md`](kubeflow/README.md) |
 | JupyterHub | foundation, base-notebook, mini-notebook, scipy-notebook, datascience-notebook (+ GPU chain), jupyterhub | [`jupyterhub/README.md`](jupyterhub/README.md) |
 | OpenVSCode Server | base, python, miniforge, rust | [`openvscode-server/README.md`](openvscode-server/README.md) |
 | Code Server | base | [`code-server/README.md`](code-server/README.md) |
@@ -46,6 +46,8 @@ Local build example:
 
 ```bash
 make -C kubeflow build-code-server
+make -C kubeflow build-deepseek-harness
+make -C kubeflow build-deepseek-harness-cuda-pytorch
 make -C kubeflow build-opencode
 make -C kubeflow build-opencode-cuda-pytorch
 make -C kubeflow build-kubecode
@@ -61,6 +63,8 @@ Override a version locally:
 ```bash
 make -C kubeflow build-code-server CODESERVER_VERSION=4.103.2
 make -C kubeflow build-code-server-arch NODE_VERSION=22.23.2 RUST_VERSION=stable
+make -C kubeflow build-deepseek-harness DEEPSEEK_HARNESS_VERSION=0.1.0-rc.6
+make -C kubeflow build-deepseek-harness-cuda-pytorch CUDA_VERSION=13.0 PYTORCH_VERSION=2.10.0 PYTORCH_CUDA_INDEX=cu130
 make -C kubeflow build-opencode OPENCODE_VERSION=1.17.20-kubeflow.2
 make -C kubeflow build-opencode-cuda-pytorch CUDA_VERSION=13.0 PYTORCH_VERSION=2.10.0 PYTORCH_CUDA_INDEX=cu130
 make -C kubeflow build-kubecode KUBECODE_VERSION=0.1.2
@@ -74,9 +78,9 @@ GitHub Actions:
 - `.github/workflows/kubeflow-images.yml` builds the complete Kubeflow image set
   on matching pushes to `master`, including changes under `kubeflow/**`,
   `versions/**`, `scripts/**`, the workflow file, and this README.
-- The workflow can be run manually with overrides for code-server, OpenCode,
-  Kubecode, Jupyter, Python, CUDA, PyTorch, torchaudio, torchvision, vLLM,
-  xFormers, and DeepSpeed versions.
+- The workflow can be run manually with overrides for code-server, DeepSeek
+  Harness, OpenCode, Kubecode, Jupyter, Python, CUDA, PyTorch, torchaudio,
+  torchvision, vLLM, xFormers, and DeepSpeed versions.
 - Its scheduled run rebuilds the currently pinned versions.
 - Images are pushed to Docker Hub by default as `docker.io/terencelau/kubeflow`.
   Configure repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`.
@@ -105,8 +109,10 @@ uses `archlinux:base` (pinned by `ARCHLINUX_BASE_IMAGE` and
 `ARCHLINUX_BASE_IMAGE_VERSION` in `versions/kubeflow.env`), installs code-server
 from the official release tarball, and bundles the Rust toolchain (via rustup,
 `RUST_VERSION`), Node.js/npm (`NODE_VERSION`), and `uv` with its default Python
-environment under `/opt/code-server`. It is amd64-only because upstream Arch
-images ship only `linux/amd64`.
+environment under `/opt/code-server`. It also bundles the AI coding CLIs
+OpenCode (`CODESERVER_ARCH_OPENCODE_VERSION`), Codex
+(`CODEX_CLI_VERSION`/`CODEX_CLI_SHA256_*`), and Claude Code
+(`CLAUDE_CODE_VERSION`/`CLAUDE_CODE_SHA256_*`).
 
 Both code-server images carry a temporary WebKit workaround for
 coder/code-server#7801 by patching VSBuffer slicing in the bundled workbench.
@@ -138,6 +144,45 @@ directory:
 /home/jovyan/.claude                             -> /home/jovyan/srv/.state/claude
 /home/jovyan/.codex                              -> /home/jovyan/srv/.state/codex
 ```
+
+## Kubeflow DeepSeek Harness Image
+
+The standalone `kubeflow/deepseek-harness` image installs the pinned
+`@deepseek-ai/dsh` release on top of the common Kubeflow base image. It does not
+inherit from OpenCode. DeepSeek Harness listens only on `127.0.0.1:3080`, as
+required by its current security policy; an nginx process in the same container
+exposes port 8888 and proxies only the Kubeflow `NB_PREFIX` path. The proxy
+rewrites the release's root-relative assets, plugin bundles, API calls,
+WebSockets, and PWA metadata for the Notebook URL prefix.
+
+The default workspace is `/home/jovyan/srv`. Set `DSH_HOME` only if the PVC
+layout is changed; by default all Harness settings, credentials, sessions,
+attachments, profiles, and workspace registrations persist here:
+
+```text
+/home/jovyan/srv/.state/deepseek-harness
+```
+
+DeepSeek Harness is published in two variants:
+
+- `latest-deepseek-harness` is the lightweight base image with Python and conda.
+- `latest-deepseek-harness-cuda-pytorch` extends the same Harness image with
+  the pinned CUDA builds of PyTorch, torchaudio, and torchvision. It declares
+  NVIDIA `compute` and `utility` capabilities for GPU-enabled Kubeflow pods.
+
+The images use pinned release and wrapper revision tags. The GPU tag also
+includes the CUDA and PyTorch versions:
+
+```text
+docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-deepseek-harness-0.1.0-rc.6-r1
+docker.io/terencelau/kubeflow:kubeflow-ubuntu-24.04-deepseek-harness-0.1.0-rc.6-r1-cuda-13.0-pytorch-2.10.0
+```
+
+DeepSeek Harness is a developer preview and its Web UI provides command and
+filesystem access. Expose this image only through the authenticated Kubeflow
+Notebook gateway; do not create an unauthenticated public Service or Ingress.
+The prefix compatibility proxy is verified against the pinned release, so a
+Harness version bump must include the same HTTP, API, and WebSocket smoke test.
 
 ## Kubeflow OpenCode Image
 

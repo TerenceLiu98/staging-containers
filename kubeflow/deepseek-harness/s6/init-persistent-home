@@ -1,0 +1,13 @@
+#!/command/with-contenv bash
+set -euo pipefail
+
+PERSISTENT_STATE_DIR="${PERSISTENT_STATE_DIR:-${PERSISTENT_DIR}/.state}"
+
+mkdir -p "${PERSISTENT_DIR}" "${PERSISTENT_STATE_DIR}" "${DSH_HOME}"
+
+if [ ! -e "${PERSISTENT_STATE_DIR}/.home_initialized" ]; then
+  echo "INFO: Copying contents of '${HOME_TMP}' to '${HOME}'..."
+  cp -r -T --update=none "${HOME_TMP}" "${HOME}"
+fi
+
+touch "${PERSISTENT_STATE_DIR}/.home_initialized"

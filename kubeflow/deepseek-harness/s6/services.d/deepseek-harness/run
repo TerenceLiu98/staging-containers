@@ -1,0 +1,12 @@
+#!/command/with-contenv bash
+set -euo pipefail
+
+/etc/init-persistent-home
+
+cd "${PERSISTENT_DIR}"
+echo "INFO: starting DeepSeek Harness on the internal loopback endpoint..."
+exec 2>&1
+exec /usr/local/bin/dsh web \
+  --host 127.0.0.1 \
+  --port 3080 \
+  --trusted-host dsh.kubeflow.internal:8888

@@ -15,6 +15,13 @@ ARG UV_VERSION
 ARG PYTHON_VERSION
 ARG NODE_VERSION
 ARG RUST_VERSION=stable
+ARG OPENCODE_VERSION
+ARG CODEX_CLI_VERSION
+ARG CODEX_CLI_SHA256_AMD64
+ARG CODEX_CLI_SHA256_ARM64
+ARG CLAUDE_CODE_VERSION
+ARG CLAUDE_CODE_SHA256_AMD64
+ARG CLAUDE_CODE_SHA256_ARM64
 ARG INSTALL_OPENAI_CHATGPT_EXTENSION=false
 ARG INSTALL_CLAUDE_CODE_EXTENSION=false
 
@@ -129,6 +136,48 @@ RUN curl -fsSL https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --defaul
  && chmod -R a+w /usr/local/cargo /usr/local/rustup \
  && rustc --version \
  && cargo --version
+
+RUN ARCH="${TARGETARCH:-$(uname -m)}" \
+ && case "$ARCH" in \
+      x86_64|amd64) \
+        OPENCODE_ASSET="opencode-linux-x64-baseline.tar.gz"; \
+        CODEX_TARGET="x86_64-unknown-linux-musl"; \
+        CODEX_SHA256="${CODEX_CLI_SHA256_AMD64}"; \
+        CLAUDE_PLATFORM="linux-x64"; \
+        CLAUDE_SHA256="${CLAUDE_CODE_SHA256_AMD64}" ;; \
+      aarch64|arm64) \
+        OPENCODE_ASSET="opencode-linux-arm64.tar.gz"; \
+        CODEX_TARGET="aarch64-unknown-linux-musl"; \
+        CODEX_SHA256="${CODEX_CLI_SHA256_ARM64}"; \
+        CLAUDE_PLATFORM="linux-arm64"; \
+        CLAUDE_SHA256="${CLAUDE_CODE_SHA256_ARM64}" ;; \
+      *) echo "Unsupported AI CLI architecture: ${ARCH} (${TARGETPLATFORM})"; exit 1 ;; \
+    esac \
+ && OPENCODE_RELEASE="https://github.com/sst/opencode/releases/download/v${OPENCODE_VERSION}" \
+ && curl -fsSL "${OPENCODE_RELEASE}/${OPENCODE_ASSET}" -o "/tmp/${OPENCODE_ASSET}" \
+ && tar -xzf "/tmp/${OPENCODE_ASSET}" -C /usr/local/bin opencode \
+ && chmod 0755 /usr/local/bin/opencode \
+ && rm -f "/tmp/${OPENCODE_ASSET}" \
+ && CODEX_ASSET="codex-${CODEX_TARGET}.tar.gz" \
+ && CODEX_RELEASE="https://github.com/openai/codex/releases/download/rust-v${CODEX_CLI_VERSION}" \
+ && curl -fsSL "${CODEX_RELEASE}/${CODEX_ASSET}" -o "/tmp/${CODEX_ASSET}" \
+ && echo "${CODEX_SHA256}  /tmp/${CODEX_ASSET}" | sha256sum -c - \
+ && tar -xzf "/tmp/${CODEX_ASSET}" -C /tmp "codex-${CODEX_TARGET}" \
+ && install -m 0755 "/tmp/codex-${CODEX_TARGET}" /usr/local/bin/codex \
+ && rm -f "/tmp/${CODEX_ASSET}" "/tmp/codex-${CODEX_TARGET}" \
+ && CLAUDE_RELEASE="https://downloads.claude.ai/claude-code-releases/${CLAUDE_CODE_VERSION}/${CLAUDE_PLATFORM}/claude" \
+ && curl -fsSL "${CLAUDE_RELEASE}" -o /tmp/claude \
+ && echo "${CLAUDE_SHA256}  /tmp/claude" | sha256sum -c - \
+ && install -m 0755 /tmp/claude /usr/local/bin/claude \
+ && rm -f /tmp/claude \
+ && mkdir -p /opt/ai-cli-smoke-home/.codex \
+ && test -x /usr/local/bin/opencode \
+ && HOME=/opt/ai-cli-smoke-home \
+      CODEX_HOME=/opt/ai-cli-smoke-home/.codex \
+      /usr/local/bin/codex --version \
+ && HOME=/opt/ai-cli-smoke-home \
+      /usr/local/bin/claude --version \
+ && rm -rf /opt/ai-cli-smoke-home
 
 RUN if ! getent group "${USERS_GID}" >/dev/null; then \
       groupadd --gid "${USERS_GID}" kubeflow; \

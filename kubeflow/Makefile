@@ -25,10 +25,13 @@ TORCHVISION_VERSION ?= 0.25.0
 CODESERVER_VERSION ?= 4.121.0
 ARCHLINUX_BASE_IMAGE ?= archlinux
 ARCHLINUX_BASE_IMAGE_VERSION ?= base-20260726.0.562117
-CODESERVER_ARCH_IMAGE_REVISION ?= 1
+CODESERVER_ARCH_IMAGE_REVISION ?= 2
 NODE_VERSION ?= 22.23.2
 RUST_VERSION ?= stable
+DEEPSEEK_HARNESS_VERSION ?= 0.1.0-rc.6
+DEEPSEEK_HARNESS_IMAGE_REVISION ?= 1
 OPENCODE_VERSION ?= 1.17.20-kubeflow.2
+CODESERVER_ARCH_OPENCODE_VERSION ?= 1.18.14
 KUBECODE_VERSION ?= 0.1.2
 KUBECODE_IMAGE_REVISION ?= 4
 KUBECODE_EDGE_IMAGE_REVISION ?= 1
@@ -67,6 +70,8 @@ JUPYTER_BASE_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-ju
 JUPYTER_CUDA_PYTORCH_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-jupyter-$(JUPYTER_VERSION)-cuda-$(CUDA_VERSION)-pytorch-$(PYTORCH_VERSION)
 CODESERVER_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-code-server-$(CODESERVER_VERSION)
 CODESERVER_ARCH_IMAGE_TAG := $(PROJECT_NAME)-$(ARCHLINUX_BASE_IMAGE)-code-server-$(CODESERVER_VERSION)-r$(CODESERVER_ARCH_IMAGE_REVISION)
+DEEPSEEK_HARNESS_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-deepseek-harness-$(DEEPSEEK_HARNESS_VERSION)-r$(DEEPSEEK_HARNESS_IMAGE_REVISION)
+DEEPSEEK_HARNESS_CUDA_PYTORCH_IMAGE_TAG := $(DEEPSEEK_HARNESS_IMAGE_TAG)-cuda-$(CUDA_VERSION)-pytorch-$(PYTORCH_VERSION)
 OPENCODE_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-opencode-$(OPENCODE_VERSION)
 OPENCODE_CUDA_PYTORCH_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-opencode-$(OPENCODE_VERSION)-cuda-$(CUDA_VERSION)-pytorch-$(PYTORCH_VERSION)
 OPENCODE_EDGE_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-opencode-edge-$(EDGE_OPENCODE_VERSION)
@@ -76,11 +81,11 @@ KUBECODE_EDGE_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-k
 KUBECODE_EDGE_CUDA_PYTORCH_IMAGE_TAG := $(KUBECODE_EDGE_IMAGE_TAG)-cuda-$(CUDA_VERSION)-pytorch-$(PYTORCH_VERSION)
 CODESERVER_LLM_IMAGE_TAG := $(PROJECT_NAME)-code-server-llm-cuda-$(CUDA_VERSION)-torch-$(PYTORCH_VERSION)-vllm-$(VLLM_VERSION)
 
-.PHONY: all build-base push-base build-jupyter-base push-jupyter-base build-jupyter-cuda-pytorch push-jupyter-cuda-pytorch build-code-server build-code-server-arch build-opencode build-opencode-cuda-pytorch build-opencode-edge build-kubecode build-kubecode-cuda-pytorch build-kubecode-edge build-kubecode-edge-cuda-pytorch build-code-server-llm push-code-server push-code-server-arch push-opencode push-opencode-cuda-pytorch push-opencode-edge push-kubecode push-kubecode-cuda-pytorch push-kubecode-edge push-kubecode-edge-cuda-pytorch push-code-server-llm
+.PHONY: all build-base push-base build-jupyter-base push-jupyter-base build-jupyter-cuda-pytorch push-jupyter-cuda-pytorch build-code-server build-code-server-arch build-deepseek-harness build-deepseek-harness-cuda-pytorch build-opencode build-opencode-cuda-pytorch build-opencode-edge build-kubecode build-kubecode-cuda-pytorch build-kubecode-edge build-kubecode-edge-cuda-pytorch build-code-server-llm push-code-server push-code-server-arch push-deepseek-harness push-deepseek-harness-cuda-pytorch push-opencode push-opencode-cuda-pytorch push-opencode-edge push-kubecode push-kubecode-cuda-pytorch push-kubecode-edge push-kubecode-edge-cuda-pytorch push-code-server-llm
 
 # Default target
-build-all: build-base build-jupyter-base build-jupyter-cuda-pytorch build-code-server build-code-server-arch build-opencode build-opencode-cuda-pytorch build-opencode-edge build-kubecode build-kubecode-cuda-pytorch build-kubecode-edge build-kubecode-edge-cuda-pytorch build-code-server-llm
-push-all: push-base push-jupyter-base push-jupyter-cuda-pytorch push-code-server push-code-server-arch push-opencode push-opencode-cuda-pytorch push-opencode-edge push-kubecode push-kubecode-cuda-pytorch push-kubecode-edge push-kubecode-edge-cuda-pytorch push-code-server-llm
+build-all: build-base build-jupyter-base build-jupyter-cuda-pytorch build-code-server build-code-server-arch build-deepseek-harness build-deepseek-harness-cuda-pytorch build-opencode build-opencode-cuda-pytorch build-opencode-edge build-kubecode build-kubecode-cuda-pytorch build-kubecode-edge build-kubecode-edge-cuda-pytorch build-code-server-llm
+push-all: push-base push-jupyter-base push-jupyter-cuda-pytorch push-code-server push-code-server-arch push-deepseek-harness push-deepseek-harness-cuda-pytorch push-opencode push-opencode-cuda-pytorch push-opencode-edge push-kubecode push-kubecode-cuda-pytorch push-kubecode-edge push-kubecode-edge-cuda-pytorch push-code-server-llm
 
 # Build base image
 build-base:
@@ -180,12 +185,57 @@ build-code-server-arch:
 		--build-arg PYTHON_VERSION=$(PYTHON_VERSION) \
 		--build-arg NODE_VERSION=$(NODE_VERSION) \
 		--build-arg RUST_VERSION=$(RUST_VERSION) \
+		--build-arg OPENCODE_VERSION=$(CODESERVER_ARCH_OPENCODE_VERSION) \
+		--build-arg CODEX_CLI_VERSION=$(CODEX_CLI_VERSION) \
+		--build-arg CODEX_CLI_SHA256_AMD64=$(CODEX_CLI_SHA256_AMD64) \
+		--build-arg CODEX_CLI_SHA256_ARM64=$(CODEX_CLI_SHA256_ARM64) \
+		--build-arg CLAUDE_CODE_VERSION=$(CLAUDE_CODE_VERSION) \
+		--build-arg CLAUDE_CODE_SHA256_AMD64=$(CLAUDE_CODE_SHA256_AMD64) \
+		--build-arg CLAUDE_CODE_SHA256_ARM64=$(CLAUDE_CODE_SHA256_ARM64) \
 		code-server-arch
 	$(CONTAINER_CLI) tag $(IMAGE_NAME):$(CODESERVER_ARCH_IMAGE_TAG) $(IMAGE_NAME):latest-code-server-arch
 
 push-code-server-arch:
 	$(CONTAINER_CLI) push $(IMAGE_NAME):$(CODESERVER_ARCH_IMAGE_TAG)
 	$(CONTAINER_CLI) push $(IMAGE_NAME):latest-code-server-arch
+
+build-deepseek-harness: build-base
+	$(CONTAINER_CLI) build \
+		-f deepseek-harness/Dockerfile \
+		-t $(IMAGE_NAME):$(DEEPSEEK_HARNESS_IMAGE_TAG) \
+		--build-arg TARGETPLATFORM=$(TARGETPLATFORM) \
+		--build-arg BASE_IMAGE_TAG=$(BASE_IMAGE_TAG) \
+		--build-arg PROJECT_NAME=$(PROJECT_NAME) \
+		--build-arg REGISTRY_PREFIX=$(REGISTRY_PREFIX) \
+		--build-arg NODE_VERSION=$(NODE_VERSION) \
+		--build-arg DEEPSEEK_HARNESS_VERSION=$(DEEPSEEK_HARNESS_VERSION) \
+		--build-arg DEEPSEEK_HARNESS_IMAGE_REVISION=$(DEEPSEEK_HARNESS_IMAGE_REVISION) \
+		deepseek-harness
+	$(CONTAINER_CLI) tag $(IMAGE_NAME):$(DEEPSEEK_HARNESS_IMAGE_TAG) $(IMAGE_NAME):latest-deepseek-harness
+
+push-deepseek-harness:
+	$(CONTAINER_CLI) push $(IMAGE_NAME):$(DEEPSEEK_HARNESS_IMAGE_TAG)
+	$(CONTAINER_CLI) push $(IMAGE_NAME):latest-deepseek-harness
+
+build-deepseek-harness-cuda-pytorch: build-deepseek-harness
+	$(CONTAINER_CLI) build \
+		-f deepseek-harness-cuda-pytorch/Dockerfile \
+		-t $(IMAGE_NAME):$(DEEPSEEK_HARNESS_CUDA_PYTORCH_IMAGE_TAG) \
+		--build-arg TARGETPLATFORM=$(TARGETPLATFORM) \
+		--build-arg DEEPSEEK_HARNESS_IMAGE_TAG=$(DEEPSEEK_HARNESS_IMAGE_TAG) \
+		--build-arg PROJECT_NAME=$(PROJECT_NAME) \
+		--build-arg REGISTRY_PREFIX=$(REGISTRY_PREFIX) \
+		--build-arg CUDA_VERSION=$(CUDA_VERSION) \
+		--build-arg PYTORCH_VERSION=$(PYTORCH_VERSION) \
+		--build-arg TORCHAUDIO_VERSION=$(TORCHAUDIO_VERSION) \
+		--build-arg TORCHVISION_VERSION=$(TORCHVISION_VERSION) \
+		--build-arg PYTORCH_CUDA_INDEX=$(PYTORCH_CUDA_INDEX) \
+		deepseek-harness-cuda-pytorch
+	$(CONTAINER_CLI) tag $(IMAGE_NAME):$(DEEPSEEK_HARNESS_CUDA_PYTORCH_IMAGE_TAG) $(IMAGE_NAME):latest-deepseek-harness-cuda-pytorch
+
+push-deepseek-harness-cuda-pytorch:
+	$(CONTAINER_CLI) push $(IMAGE_NAME):$(DEEPSEEK_HARNESS_CUDA_PYTORCH_IMAGE_TAG)
+	$(CONTAINER_CLI) push $(IMAGE_NAME):latest-deepseek-harness-cuda-pytorch
 
 build-opencode: build-base
 	$(CONTAINER_CLI) build \

@@ -9,6 +9,8 @@
 graph TD
     base[base] --> jupyter[jupyter]
     jupyter --> jupyter_cuda[jupyter-cuda-pytorch]
+    base --> deepseek_harness[deepseek-harness]
+    deepseek_harness --> deepseek_harness_cuda[deepseek-harness-cuda-pytorch]
     base --> opencode[opencode]
     opencode --> opencode_cuda[opencode-cuda-pytorch]
     opencode --> kubecode[kubecode]
@@ -29,6 +31,13 @@ graph TD
 - `jupyter-cuda-pytorch` - `jupyter` plus the pinned CUDA builds of PyTorch,
   torchaudio and torchvision. An alternate `Dockerfile.openvscode-server` in the
   same directory additionally bundles OpenVSCode Server.
+- `deepseek-harness` - the pinned DeepSeek Harness Web UI on top of `base`.
+  Harness remains bound to loopback; an nginx compatibility proxy exposes port
+  8888 and rewrites its root-relative frontend, plugin, API, WebSocket and PWA
+  paths for Kubeflow's `NB_PREFIX`. Its complete `DSH_HOME` lives on the user
+  PVC under `/home/jovyan/srv/.state/deepseek-harness`.
+- `deepseek-harness-cuda-pytorch` - `deepseek-harness` plus the pinned CUDA
+  PyTorch stack and NVIDIA runtime capability declarations.
 - `opencode` - the forked OpenCode Web server and GitHub CLI on top of `base`.
 - `opencode-cuda-pytorch` - `opencode` plus the pinned CUDA PyTorch stack.
 - `kubecode` - `opencode` with Kubecode, Bubblewrap, GitHub CLI, and bundled
@@ -52,6 +61,8 @@ built as a matrix from `../versions/code-server-llm-matrix.json`.
 ```bash
 make -C . build-base
 make -C . build-jupyter-cuda-pytorch
+make -C . build-deepseek-harness
+make -C . build-deepseek-harness-cuda-pytorch
 make -C . build-opencode
 make -C . build-opencode-cuda-pytorch
 make -C . build-kubecode

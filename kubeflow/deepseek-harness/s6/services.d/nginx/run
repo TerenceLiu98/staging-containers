@@ -1,0 +1,24 @@
+#!/command/with-contenv bash
+set -euo pipefail
+
+prefix="${NB_PREFIX:-/}"
+case "${prefix}" in
+  /*) ;;
+  *) prefix="/${prefix}" ;;
+esac
+case "${prefix}" in
+  */) ;;
+  *) prefix="${prefix}/" ;;
+esac
+
+if [[ ! "${prefix}" =~ ^/[A-Za-z0-9._~/%-]*/$ ]]; then
+  echo "ERROR: NB_PREFIX contains unsupported characters: ${prefix}" >&2
+  exit 1
+fi
+
+config=/tmp/deepseek-harness-nginx.conf
+sed "s|__NB_PREFIX__|${prefix}|g" /etc/deepseek-harness/nginx.conf.template > "${config}"
+
+echo "INFO: exposing DeepSeek Harness at ${prefix} on port 8888..."
+exec 2>&1
+exec nginx -c "${config}"
