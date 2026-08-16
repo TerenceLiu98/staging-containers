@@ -41,7 +41,11 @@ LABEL org.opencontainers.image.title="meta-bundle" \
       io.meta-bundle.mihomo.version="${MIHOMO_VERSION}" \
       io.meta-bundle.zashboard.version="${ZASHBOARD_VERSION}"
 
-ENV SAFE_PATHS=/usr/share/zashboard
+RUN apk add --no-cache curl
+
+ENV SAFE_PATHS=/usr/share/zashboard \
+    CLASH_OVERRIDE_EXTERNAL_UI_DIR=/usr/share/zashboard \
+    CLASH_OVERRIDE_EXTERNAL_CONTROLLER=0.0.0.0:9090
 
 COPY --from=zashboard /out/zashboard/ /usr/share/zashboard/
 COPY --from=zashboard /out/licenses/ /usr/share/licenses/meta-bundle/
