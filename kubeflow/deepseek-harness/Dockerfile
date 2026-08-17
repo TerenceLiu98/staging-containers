@@ -32,7 +32,7 @@ RUN case "${TARGETPLATFORM}" in \
  && NODE_ARCHIVE="node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz" \
  && curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/${NODE_ARCHIVE}" -o "/tmp/${NODE_ARCHIVE}" \
  && curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt" -o /tmp/SHASUMS256.txt \
- && grep "  ${NODE_ARCHIVE}$" /tmp/SHASUMS256.txt | sha256sum -c - \
+ && (cd /tmp && grep "  ${NODE_ARCHIVE}$" SHASUMS256.txt | sha256sum -c -) \
  && tar -xJf "/tmp/${NODE_ARCHIVE}" --strip-components=1 -C /usr/local \
  && rm -f "/tmp/${NODE_ARCHIVE}" /tmp/SHASUMS256.txt \
  && node --version \
