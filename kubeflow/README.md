@@ -8,6 +8,7 @@
 ```mermaid
 graph TD
     base[base] --> jupyter[jupyter]
+    base_tailscale[base-tailscale]
     jupyter --> jupyter_cuda[jupyter-cuda-pytorch]
     base --> deepseek_harness[deepseek-harness]
     deepseek_harness --> deepseek_harness_cuda[deepseek-harness-cuda-pytorch]
@@ -27,6 +28,9 @@ graph TD
 
 - `base` - the Ubuntu 24.04 base image with s6, kubectl, conda/miniforge and the
   `jovyan` user. Everything below it inherits from this image.
+- `base-tailscale` - a standalone Ubuntu 24.04 image with Tailscale, Node.js/npm,
+  Bubblewrap, sudo, and an enabled OpenSSH server. It uses the `ubuntu` user with
+  password `ubuntu` and does not inherit from `base`.
 - `jupyter` - JupyterLab + Notebook on top of `base`.
 - `jupyter-cuda-pytorch` - `jupyter` plus the pinned CUDA builds of PyTorch,
   torchaudio and torchvision. An alternate `Dockerfile.openvscode-server` in the
@@ -52,6 +56,23 @@ graph TD
   code-server + uv + s6 layout but each is built directly from its own external
   base image (Ubuntu, Arch Linux and NVIDIA CUDA respectively), so they have no
   image inheritance between them nor from the repo `base` image.
+`base-tailscale` starts both `tailscaled` and `sshd` when the container starts.
+Set `TS_AUTHKEY` to authenticate automatically and persist `/var/lib/tailscale`
+if the node identity should survive restarts. The default `TS_USERSPACE=true`
+works without `/dev/net/tun`; set `TS_USERSPACE=false` only when the container
+has `/dev/net/tun` and the required network capabilities. For example:
+
+```bash
+docker run -d --name base-tailscale \
+  -e TS_AUTHKEY=tskey-... \
+  -v base-tailscale-state:/var/lib/tailscale \
+  -p 2222:22 \
+  terencelau/kubeflow:latest-base-tailscale
+```
+
+The image intentionally keeps the requested default `ubuntu` / `ubuntu`
+password. Change it before exposing SSH beyond a controlled environment.
+
 
 Version pins live in `../versions/kubeflow.env`. The `code-server-llm` image is
 built as a matrix from `../versions/code-server-llm-matrix.json`.
@@ -60,6 +81,7 @@ built as a matrix from `../versions/code-server-llm-matrix.json`.
 
 ```bash
 make -C . build-base
+make -C . build-base-tailscale
 make -C . build-jupyter-cuda-pytorch
 make -C . build-deepseek-harness
 make -C . build-deepseek-harness-cuda-pytorch

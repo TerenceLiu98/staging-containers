@@ -66,6 +66,7 @@ SENTENCEPIECE_VERSION ?= 0.2.1
 
 # Dynamic image tags
 BASE_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)
+BASE_TAILSCALE_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-base-tailscale
 JUPYTER_BASE_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-jupyter-$(JUPYTER_VERSION)
 JUPYTER_CUDA_PYTORCH_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-jupyter-$(JUPYTER_VERSION)-cuda-$(CUDA_VERSION)-pytorch-$(PYTORCH_VERSION)
 CODESERVER_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-code-server-$(CODESERVER_VERSION)
@@ -81,11 +82,11 @@ KUBECODE_EDGE_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-k
 KUBECODE_EDGE_CUDA_PYTORCH_IMAGE_TAG := $(KUBECODE_EDGE_IMAGE_TAG)-cuda-$(CUDA_VERSION)-pytorch-$(PYTORCH_VERSION)
 CODESERVER_LLM_IMAGE_TAG := $(PROJECT_NAME)-code-server-llm-cuda-$(CUDA_VERSION)-torch-$(PYTORCH_VERSION)-vllm-$(VLLM_VERSION)
 
-.PHONY: all build-base push-base build-jupyter-base push-jupyter-base build-jupyter-cuda-pytorch push-jupyter-cuda-pytorch build-code-server build-code-server-arch build-deepseek-harness build-deepseek-harness-cuda-pytorch build-opencode build-opencode-cuda-pytorch build-opencode-edge build-kubecode build-kubecode-cuda-pytorch build-kubecode-edge build-kubecode-edge-cuda-pytorch build-code-server-llm push-code-server push-code-server-arch push-deepseek-harness push-deepseek-harness-cuda-pytorch push-opencode push-opencode-cuda-pytorch push-opencode-edge push-kubecode push-kubecode-cuda-pytorch push-kubecode-edge push-kubecode-edge-cuda-pytorch push-code-server-llm
+.PHONY: all build-base push-base build-base-tailscale push-base-tailscale build-jupyter-base push-jupyter-base build-jupyter-cuda-pytorch push-jupyter-cuda-pytorch build-code-server build-code-server-arch build-deepseek-harness build-deepseek-harness-cuda-pytorch build-opencode build-opencode-cuda-pytorch build-opencode-edge build-kubecode build-kubecode-cuda-pytorch build-kubecode-edge build-kubecode-edge-cuda-pytorch build-code-server-llm push-code-server push-code-server-arch push-deepseek-harness push-deepseek-harness-cuda-pytorch push-opencode push-opencode-cuda-pytorch push-opencode-edge push-kubecode push-kubecode-cuda-pytorch push-kubecode-edge push-kubecode-edge-cuda-pytorch push-code-server-llm
 
 # Default target
-build-all: build-base build-jupyter-base build-jupyter-cuda-pytorch build-code-server build-code-server-arch build-deepseek-harness build-deepseek-harness-cuda-pytorch build-opencode build-opencode-cuda-pytorch build-opencode-edge build-kubecode build-kubecode-cuda-pytorch build-kubecode-edge build-kubecode-edge-cuda-pytorch build-code-server-llm
-push-all: push-base push-jupyter-base push-jupyter-cuda-pytorch push-code-server push-code-server-arch push-deepseek-harness push-deepseek-harness-cuda-pytorch push-opencode push-opencode-cuda-pytorch push-opencode-edge push-kubecode push-kubecode-cuda-pytorch push-kubecode-edge push-kubecode-edge-cuda-pytorch push-code-server-llm
+build-all: build-base build-base-tailscale build-jupyter-base build-jupyter-cuda-pytorch build-code-server build-code-server-arch build-deepseek-harness build-deepseek-harness-cuda-pytorch build-opencode build-opencode-cuda-pytorch build-opencode-edge build-kubecode build-kubecode-cuda-pytorch build-kubecode-edge build-kubecode-edge-cuda-pytorch build-code-server-llm
+push-all: push-base push-base-tailscale push-jupyter-base push-jupyter-cuda-pytorch push-code-server push-code-server-arch push-deepseek-harness push-deepseek-harness-cuda-pytorch push-opencode push-opencode-cuda-pytorch push-opencode-edge push-kubecode push-kubecode-cuda-pytorch push-kubecode-edge push-kubecode-edge-cuda-pytorch push-code-server-llm
 
 # Build base image
 build-base:
@@ -105,6 +106,22 @@ build-base:
 push-base:
 	$(CONTAINER_CLI) push $(IMAGE_NAME):$(BASE_IMAGE_TAG)
 	$(CONTAINER_CLI) push $(IMAGE_NAME):latest-base
+
+# Build standalone Ubuntu image with Tailscale and SSH
+build-base-tailscale:
+	$(CONTAINER_CLI) build \
+		-f base-tailscale/Dockerfile \
+		-t $(IMAGE_NAME):$(BASE_TAILSCALE_IMAGE_TAG) \
+		--build-arg TARGETPLATFORM=$(TARGETPLATFORM) \
+		--build-arg BASE_IMAGE=$(BASE_IMAGE) \
+		--build-arg BASE_IMAGE_VERSION=$(BASE_IMAGE_VERSION) \
+		base-tailscale
+	$(CONTAINER_CLI) tag $(IMAGE_NAME):$(BASE_TAILSCALE_IMAGE_TAG) $(IMAGE_NAME):latest-base-tailscale
+
+# Push standalone Ubuntu image with Tailscale and SSH
+push-base-tailscale:
+	$(CONTAINER_CLI) push $(IMAGE_NAME):$(BASE_TAILSCALE_IMAGE_TAG)
+	$(CONTAINER_CLI) push $(IMAGE_NAME):latest-base-tailscale
 
 # Build jupyter-base image
 build-jupyter-base: build-base

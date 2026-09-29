@@ -12,6 +12,7 @@ on:
         options:
           - all
           - base
+          - base-tailscale
           - jupyter
           - jupyter-cuda-pytorch
           - code-server
@@ -265,6 +266,7 @@ jobs:
 
           IMAGE_NAME="${REGISTRY_PREFIX}/${PROJECT_NAME}"
           BASE_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}"
+          BASE_TAILSCALE_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-base-tailscale"
           JUPYTER_BASE_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-jupyter-${JUPYTER_VERSION}"
           JUPYTER_CUDA_PYTORCH_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-jupyter-${JUPYTER_VERSION}-cuda-${CUDA_VERSION}-pytorch-${PYTORCH_VERSION}"
           CODESERVER_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-code-server-${CODESERVER_VERSION}"
@@ -345,6 +347,7 @@ jobs:
             echo "BITSANDBYTES_VERSION=${BITSANDBYTES_VERSION}"
             echo "SENTENCEPIECE_VERSION=${SENTENCEPIECE_VERSION}"
             echo "BASE_IMAGE_TAG=${BASE_IMAGE_TAG}"
+            echo "BASE_TAILSCALE_IMAGE_TAG=${BASE_TAILSCALE_IMAGE_TAG}"
             echo "JUPYTER_BASE_IMAGE_TAG=${JUPYTER_BASE_IMAGE_TAG}"
             echo "JUPYTER_CUDA_PYTORCH_IMAGE_TAG=${JUPYTER_CUDA_PYTORCH_IMAGE_TAG}"
             echo "CODESERVER_IMAGE_TAG=${CODESERVER_IMAGE_TAG}"
@@ -401,6 +404,21 @@ jobs:
               --build-arg "PIP_VERSION=${PIP_VERSION}" \
               --build-arg "PYTHON_VERSION=${PYTHON_VERSION}" \
               kubeflow/base
+          }
+
+          build_base_tailscale() {
+            docker buildx build \
+              --platform "${TARGETPLATFORM}" \
+              --file kubeflow/base-tailscale/Dockerfile \
+              --tag "${IMAGE_NAME}:${BASE_TAILSCALE_IMAGE_TAG}" \
+              --tag "${IMAGE_NAME}:latest-base-tailscale" \
+              --cache-from "type=gha,scope=kubeflow-base-tailscale" \
+              --cache-to "type=gha,mode=max,scope=kubeflow-base-tailscale" \
+              "${OUTPUT_ARGS[@]}" \
+              --build-arg "TARGETPLATFORM=${TARGETPLATFORM}" \
+              --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
+              --build-arg "BASE_IMAGE_VERSION=${BASE_IMAGE_VERSION}" \
+              kubeflow/base-tailscale
           }
 
           build_jupyter() {
@@ -718,6 +736,7 @@ jobs:
           case "${IMAGE}" in
             all)
               build_base
+              build_base_tailscale
               build_jupyter
               build_jupyter_cuda_pytorch
               build_code_server
@@ -734,6 +753,9 @@ jobs:
               ;;
             base)
               build_base
+              ;;
+            base-tailscale)
+              build_base_tailscale
               ;;
             jupyter)
               build_base
