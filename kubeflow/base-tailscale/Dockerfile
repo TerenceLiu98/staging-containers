@@ -29,7 +29,11 @@ RUN apt-get update \
       sudo \
       bubblewrap \
  && curl -fsSL https://tailscale.com/install.sh | sh \
- && useradd --create-home --shell /bin/bash --groups sudo ubuntu \
+ && if id -u ubuntu >/dev/null 2>&1; then \
+      usermod --shell /bin/bash --append --groups sudo ubuntu; \
+    else \
+      useradd --create-home --shell /bin/bash --groups sudo ubuntu; \
+    fi \
  && echo 'ubuntu:ubuntu' | chpasswd \
  && printf '%s\n' \
       'PasswordAuthentication yes' \
