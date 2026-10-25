@@ -25,6 +25,7 @@ on:
           - kubecode-cuda-pytorch
           - kubecode-edge
           - kubecode-edge-cuda-pytorch
+          - agent-sandbox
           - code-server-llm
       push_images:
         description: Push images to the registry.
@@ -280,6 +281,7 @@ jobs:
           KUBECODE_CUDA_PYTORCH_IMAGE_TAG="${KUBECODE_IMAGE_TAG}-cuda-${CUDA_VERSION}-pytorch-${PYTORCH_VERSION}"
           KUBECODE_EDGE_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-kubecode-${KUBECODE_VERSION}-edge-r${KUBECODE_EDGE_IMAGE_REVISION}"
           KUBECODE_EDGE_CUDA_PYTORCH_IMAGE_TAG="${KUBECODE_EDGE_IMAGE_TAG}-cuda-${CUDA_VERSION}-pytorch-${PYTORCH_VERSION}"
+          AGENT_SANDBOX_IMAGE_TAG="${PROJECT_NAME}-${BASE_IMAGE}-${BASE_IMAGE_VERSION}-agent-sandbox-r${AGENT_SANDBOX_IMAGE_REVISION}"
           CODESERVER_LLM_IMAGE_TAG="${PROJECT_NAME}-code-server-llm-cuda-${CUDA_VERSION}-torch-${PYTORCH_VERSION}-vllm-${VLLM_VERSION}"
 
           REGISTRY_HOST="${REGISTRY_PREFIX%%/*}"
@@ -362,6 +364,25 @@ jobs:
             echo "KUBECODE_EDGE_IMAGE_TAG=${KUBECODE_EDGE_IMAGE_TAG}"
             echo "KUBECODE_EDGE_CUDA_PYTORCH_IMAGE_TAG=${KUBECODE_EDGE_CUDA_PYTORCH_IMAGE_TAG}"
             echo "CODESERVER_LLM_IMAGE_TAG=${CODESERVER_LLM_IMAGE_TAG}"
+            echo "AGENT_SANDBOX_IMAGE_REVISION=${AGENT_SANDBOX_IMAGE_REVISION}"
+            echo "AGENT_SANDBOX_NODE_VERSION=${AGENT_SANDBOX_NODE_VERSION}"
+            echo "AGENT_SANDBOX_NODE_SHA256_AMD64=${AGENT_SANDBOX_NODE_SHA256_AMD64}"
+            echo "AGENT_SANDBOX_NODE_SHA256_ARM64=${AGENT_SANDBOX_NODE_SHA256_ARM64}"
+            echo "AGENT_SANDBOX_OPENCODE_VERSION=${AGENT_SANDBOX_OPENCODE_VERSION}"
+            echo "AGENT_SANDBOX_OPENCODE_SHA256_AMD64=${AGENT_SANDBOX_OPENCODE_SHA256_AMD64}"
+            echo "AGENT_SANDBOX_OPENCODE_SHA256_ARM64=${AGENT_SANDBOX_OPENCODE_SHA256_ARM64}"
+            echo "ZCODE_VERSION=${ZCODE_VERSION}"
+            echo "ZCODE_SHA512_AMD64=${ZCODE_SHA512_AMD64}"
+            echo "ZCODE_SHA512_ARM64=${ZCODE_SHA512_ARM64}"
+            echo "AGENT_BROWSER_VERSION=${AGENT_BROWSER_VERSION}"
+            echo "AGENT_BROWSER_SHA512=${AGENT_BROWSER_SHA512}"
+            echo "PLAYWRIGHT_VERSION=${PLAYWRIGHT_VERSION}"
+            echo "NOVNC_VERSION=${NOVNC_VERSION}"
+            echo "NOVNC_SHA256=${NOVNC_SHA256}"
+            echo "TTYD_VERSION=${TTYD_VERSION}"
+            echo "TTYD_SHA256_AMD64=${TTYD_SHA256_AMD64}"
+            echo "TTYD_SHA256_ARM64=${TTYD_SHA256_ARM64}"
+            echo "AGENT_SANDBOX_IMAGE_TAG=${AGENT_SANDBOX_IMAGE_TAG}"
           } >> "${GITHUB_ENV}"
 
           {
@@ -733,6 +754,47 @@ jobs:
               kubeflow/code-server-llm
           }
 
+          build_agent_sandbox() {
+            docker buildx build \
+              --platform "${TARGETPLATFORM}" \
+              --file kubeflow/agent-sandbox/Dockerfile \
+              --tag "${IMAGE_NAME}:${AGENT_SANDBOX_IMAGE_TAG}" \
+              --tag "${IMAGE_NAME}:latest-agent-sandbox" \
+              --cache-from "type=gha,scope=kubeflow-agent-sandbox" \
+              --cache-to "type=gha,mode=max,scope=kubeflow-agent-sandbox" \
+              "${OUTPUT_ARGS[@]}" \
+              --build-arg "TARGETPLATFORM=${TARGETPLATFORM}" \
+              --build-arg "BASE_IMAGE_TAG=${BASE_IMAGE_TAG}" \
+              --build-arg "PROJECT_NAME=${PROJECT_NAME}" \
+              --build-arg "REGISTRY_PREFIX=${REGISTRY_PREFIX}" \
+              --build-arg "AGENT_SANDBOX_IMAGE_REVISION=${AGENT_SANDBOX_IMAGE_REVISION}" \
+              --build-arg "CODESERVER_VERSION=${CODESERVER_VERSION}" \
+              --build-arg "AGENT_SANDBOX_NODE_VERSION=${AGENT_SANDBOX_NODE_VERSION}" \
+              --build-arg "AGENT_SANDBOX_NODE_SHA256_AMD64=${AGENT_SANDBOX_NODE_SHA256_AMD64}" \
+              --build-arg "AGENT_SANDBOX_NODE_SHA256_ARM64=${AGENT_SANDBOX_NODE_SHA256_ARM64}" \
+              --build-arg "PLAYWRIGHT_VERSION=${PLAYWRIGHT_VERSION}" \
+              --build-arg "NOVNC_VERSION=${NOVNC_VERSION}" \
+              --build-arg "NOVNC_SHA256=${NOVNC_SHA256}" \
+              --build-arg "TTYD_VERSION=${TTYD_VERSION}" \
+              --build-arg "TTYD_SHA256_AMD64=${TTYD_SHA256_AMD64}" \
+              --build-arg "TTYD_SHA256_ARM64=${TTYD_SHA256_ARM64}" \
+              --build-arg "CODEX_CLI_VERSION=${CODEX_CLI_VERSION}" \
+              --build-arg "CODEX_CLI_SHA256_AMD64=${CODEX_CLI_SHA256_AMD64}" \
+              --build-arg "CODEX_CLI_SHA256_ARM64=${CODEX_CLI_SHA256_ARM64}" \
+              --build-arg "CLAUDE_CODE_VERSION=${CLAUDE_CODE_VERSION}" \
+              --build-arg "CLAUDE_CODE_SHA256_AMD64=${CLAUDE_CODE_SHA256_AMD64}" \
+              --build-arg "CLAUDE_CODE_SHA256_ARM64=${CLAUDE_CODE_SHA256_ARM64}" \
+              --build-arg "AGENT_SANDBOX_OPENCODE_VERSION=${AGENT_SANDBOX_OPENCODE_VERSION}" \
+              --build-arg "AGENT_SANDBOX_OPENCODE_SHA256_AMD64=${AGENT_SANDBOX_OPENCODE_SHA256_AMD64}" \
+              --build-arg "AGENT_SANDBOX_OPENCODE_SHA256_ARM64=${AGENT_SANDBOX_OPENCODE_SHA256_ARM64}" \
+              --build-arg "ZCODE_VERSION=${ZCODE_VERSION}" \
+              --build-arg "ZCODE_SHA512_AMD64=${ZCODE_SHA512_AMD64}" \
+              --build-arg "ZCODE_SHA512_ARM64=${ZCODE_SHA512_ARM64}" \
+              --build-arg "AGENT_BROWSER_VERSION=${AGENT_BROWSER_VERSION}" \
+              --build-arg "AGENT_BROWSER_SHA512=${AGENT_BROWSER_SHA512}" \
+              kubeflow/agent-sandbox
+          }
+
           case "${IMAGE}" in
             all)
               build_base
@@ -750,6 +812,7 @@ jobs:
               build_opencode_edge
               build_kubecode_edge
               build_kubecode_edge_cuda_pytorch
+              build_agent_sandbox
               ;;
             base)
               build_base
@@ -811,6 +874,10 @@ jobs:
               build_opencode_edge
               build_kubecode_edge
               build_kubecode_edge_cuda_pytorch
+              ;;
+            agent-sandbox)
+              build_base
+              build_agent_sandbox
               ;;
             code-server-llm)
               echo "code-server-llm is built by the matrix job."

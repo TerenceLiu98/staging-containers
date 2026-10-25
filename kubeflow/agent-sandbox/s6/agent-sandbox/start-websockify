@@ -1,0 +1,7 @@
+#!/bin/bash
+# start-websockify <display> <listen-port> <rfb-port>: WebSocket bridge plus noVNC files.
+set -euo pipefail
+export DISPLAY="$1"
+/etc/agent-sandbox/wait-for-display
+echo "INFO: starting websockify 127.0.0.1:$2 -> 127.0.0.1:$3 ..."
+exec websockify --heartbeat 30 --web /opt/novnc "127.0.0.1:$2" "127.0.0.1:$3"

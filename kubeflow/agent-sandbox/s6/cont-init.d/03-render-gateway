@@ -1,0 +1,30 @@
+#!/command/with-contenv bash
+set -euo pipefail
+
+NGINX_RUNTIME_DIR=/tmp/nginx
+
+# Kubeflow sets NB_PREFIX to /notebook/<namespace>/<name>; the base image default is "/".
+PREFIX="${NB_PREFIX:-}"
+PREFIX="${PREFIX%/}"
+export PREFIX
+
+if [ -n "${PREFIX}" ]; then
+  PREFIX_REDIRECT="location = ${PREFIX} { return 302 ${PREFIX}/; } location = ${PREFIX}/healthz { default_type text/plain; return 200 \"ok\\n\"; }"
+else
+  PREFIX_REDIRECT=""
+fi
+export PREFIX_REDIRECT
+
+mkdir -p \
+  "${NGINX_RUNTIME_DIR}/client_body" \
+  "${NGINX_RUNTIME_DIR}/proxy" \
+  "${NGINX_RUNTIME_DIR}/fastcgi" \
+  "${NGINX_RUNTIME_DIR}/uwsgi" \
+  "${NGINX_RUNTIME_DIR}/scgi"
+
+envsubst '${PREFIX} ${PREFIX_REDIRECT} ${BROWSER_CDP_PORT}' \
+  < /etc/agent-sandbox/nginx.conf.tmpl \
+  > "${NGINX_RUNTIME_DIR}/nginx.conf"
+
+nginx -e stderr -t -q -c "${NGINX_RUNTIME_DIR}/nginx.conf"
+echo "INFO: gateway rendered for prefix '${PREFIX:-/}'"

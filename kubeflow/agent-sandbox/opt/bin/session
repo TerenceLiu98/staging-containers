@@ -1,0 +1,23 @@
+#!/bin/bash
+# ttyd entry point. ttyd passes ?arg=<name> as $1; only known sessions are allowed.
+set -euo pipefail
+
+name="${1:-main}"
+case "${name}" in
+  main) command="" ;;
+  codex | claude | opencode) command="${name}" ;;
+  *)
+    echo "Unknown session: ${name}" >&2
+    sleep 3
+    exit 1
+    ;;
+esac
+
+cd "${PERSISTENT_DIR:-${HOME}}"
+
+if [ -z "${command}" ]; then
+  exec tmux new-session -A -s main
+fi
+
+# Keep a shell in the session after the agent exits so the panel stays usable.
+exec tmux new-session -A -s "${name}" "${command}; exec bash -l"

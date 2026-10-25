@@ -1,0 +1,20 @@
+#!/bin/bash
+# start-xvnc <display> <rfb-port>: a loopback-only VNC X server.
+set -euo pipefail
+display="$1"
+port="$2"
+number="${display#:}"
+number="${number%%.*}"
+rm -f "/tmp/.X${number}-lock" "/tmp/.X11-unix/X${number}"
+
+echo "INFO: starting Xvnc on ${display} (${VNC_GEOMETRY:-1600x1000}), VNC port ${port} ..."
+exec Xvnc "${display}" \
+  -geometry "${VNC_GEOMETRY:-1600x1000}" \
+  -depth 24 \
+  -rfbport "${port}" \
+  -localhost \
+  -SecurityTypes None \
+  -AlwaysShared \
+  -AcceptSetDesktopSize \
+  -nolisten tcp \
+  -desktop "Agent Sandbox ${display}"

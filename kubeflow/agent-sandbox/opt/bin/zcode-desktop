@@ -1,0 +1,10 @@
+#!/bin/bash
+# Launch the ZCode desktop app with the flags it needs in a container. Also the handler
+# for zcode:// links (login callbacks): a second launch hands the URL to the running app.
+export DISPLAY="${ZCODE_DISPLAY:-:2}"
+exec /opt/ZCode/zcode \
+  --no-sandbox \
+  --disable-gpu \
+  --disable-dev-shm-usage \
+  --password-store=basic \
+  "$@"

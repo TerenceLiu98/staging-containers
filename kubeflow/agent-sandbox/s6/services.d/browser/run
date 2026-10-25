@@ -1,0 +1,53 @@
+#!/command/with-contenv bash
+exec 2>&1
+
+. /etc/agent-sandbox/runtime-env
+
+/etc/agent-sandbox/wait-for-display || exit 1
+
+PROFILE_DIR="${HOME}/.config/sandbox-browser"
+DOWNLOAD_DIR="${PERSISTENT_DIR}/Downloads"
+PREFERENCES="${PROFILE_DIR}/Default/Preferences"
+mkdir -p "${PROFILE_DIR}/Default" "${DOWNLOAD_DIR}"
+
+# A recreated pod has a new hostname; Chromium refuses to start while the old locks remain.
+rm -f "${PROFILE_DIR}/SingletonLock" "${PROFILE_DIR}/SingletonSocket" "${PROFILE_DIR}/SingletonCookie"
+
+if [ ! -s "${PREFERENCES}" ] || ! jq -e . "${PREFERENCES}" >/dev/null 2>&1; then
+  echo '{}' > "${PREFERENCES}"
+fi
+jq --arg dir "${DOWNLOAD_DIR}" '
+  .download.default_directory = $dir
+  | .download.directory_upgrade = true
+  | .download.prompt_for_download = false
+  | .savefile.default_directory = $dir
+  | .browser.has_seen_welcome_page = true
+  | .profile.exit_type = "Normal"
+  | .profile.exited_cleanly = true
+' "${PREFERENCES}" > "${PREFERENCES}.tmp" && mv "${PREFERENCES}.tmp" "${PREFERENCES}"
+
+echo "INFO: starting Chromium with CDP on 127.0.0.1:${BROWSER_CDP_PORT} ..."
+# shellcheck disable=SC2086
+exec /usr/local/bin/chromium \
+  --user-data-dir="${PROFILE_DIR}" \
+  --disk-cache-dir=/tmp/chromium-cache \
+  --remote-debugging-address=127.0.0.1 \
+  --remote-debugging-port="${BROWSER_CDP_PORT}" \
+  --remote-allow-origins='*' \
+  --no-sandbox \
+  --disable-dev-shm-usage \
+  --disable-gpu \
+  --password-store=basic \
+  --no-first-run \
+  --no-default-browser-check \
+  --noerrdialogs \
+  --disable-infobars \
+  --disable-session-crashed-bubble \
+  --disable-blink-features=AutomationControlled \
+  --disable-backgrounding-occluded-windows \
+  --disable-background-timer-throttling \
+  --disable-renderer-backgrounding \
+  --disable-features=Translate,IPH_DesktopCustomizeChrome \
+  --start-maximized \
+  ${BROWSER_EXTRA_ARGS} \
+  "${BROWSER_HOMEPAGE:-about:blank}"

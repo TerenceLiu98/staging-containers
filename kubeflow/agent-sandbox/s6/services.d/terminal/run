@@ -1,0 +1,22 @@
+#!/command/with-contenv bash
+exec 2>&1
+
+. /etc/agent-sandbox/runtime-env
+
+PREFIX="${NB_PREFIX:-}"
+PREFIX="${PREFIX%/}"
+
+cd "${PERSISTENT_DIR}" || { echo "ERROR: failed to cd to ${PERSISTENT_DIR}"; exit 1; }
+echo "INFO: starting ttyd at ${PREFIX}/terminal ..."
+exec /usr/local/bin/ttyd \
+  --interface 127.0.0.1 \
+  --port 7681 \
+  --base-path "${PREFIX}/terminal" \
+  --writable \
+  --url-arg \
+  --ping-interval 30 \
+  --client-option fontSize=14 \
+  --client-option disableLeaveAlert=true \
+  --client-option titleFixed=Terminal \
+  --client-option 'theme={"background":"#1e1e1e","foreground":"#d4d4d4"}' \
+  "${AGENT_SANDBOX_DIR}/bin/session"

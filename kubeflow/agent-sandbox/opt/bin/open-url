@@ -1,0 +1,20 @@
+#!/bin/bash
+# $BROWSER / xdg-open target: open URLs as new tabs in the shared Chromium, so logins
+# started from a terminal or from ZCode (and their localhost callbacks) stay in the sandbox.
+set -euo pipefail
+
+port="${BROWSER_CDP_PORT:-9222}"
+status=0
+for url in "$@"; do
+  case "${url}" in
+    http://* | https://* | file://* | about:*) ;;
+    /*) url="file://${url}" ;;
+    *) url="https://${url}" ;;
+  esac
+  encoded="$(jq -rn --arg u "${url}" '$u | @uri')"
+  if ! curl -fsS -X PUT "http://127.0.0.1:${port}/json/new?${encoded}" >/dev/null; then
+    echo "open-url: could not reach the sandbox browser on port ${port}: ${url}" >&2
+    status=1
+  fi
+done
+exit "${status}"

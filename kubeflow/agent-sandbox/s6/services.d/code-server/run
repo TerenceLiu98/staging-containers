@@ -1,0 +1,16 @@
+#!/command/with-contenv bash
+exec 2>&1
+
+. /etc/agent-sandbox/runtime-env
+
+cd "${PERSISTENT_DIR}" || { echo "ERROR: failed to cd to ${PERSISTENT_DIR}"; exit 1; }
+echo "INFO: starting code-server ..."
+exec /usr/bin/code-server \
+  --bind-addr 127.0.0.1:8200 \
+  --disable-telemetry \
+  --disable-update-check \
+  --disable-workspace-trust \
+  --disable-getting-started-override \
+  --auth none \
+  --trusted-origins "*" \
+  "${PERSISTENT_DIR}"

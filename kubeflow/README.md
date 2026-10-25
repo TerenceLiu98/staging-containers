@@ -19,6 +19,7 @@ graph TD
     base --> opencode_edge[opencode-edge]
     opencode_edge --> kubecode_edge[kubecode-edge]
     kubecode_edge --> kubecode_edge_cuda[kubecode-edge-cuda-pytorch]
+    base --> agent_sandbox[agent-sandbox]
     subgraph cs["code-server family"]
         code_server[code-server]
         code_server_arch[code-server-arch]
@@ -51,6 +52,16 @@ graph TD
   OpenCode, Codex and Claude Code versions resolved by automation.
 - `kubecode-edge-cuda-pytorch` - `kubecode-edge` plus the pinned CUDA PyTorch
   stack.
+- `agent-sandbox` - an all-in-one agent workspace on top of `base`, modelled on
+  agent-infra/sandbox. Opening the notebook shows a multi-panel page with VS Code
+  (code-server), a Chromium browser on a VNC display, a tmux-backed terminal, one
+  terminal panel each for Codex, Claude Code and OpenCode, and the ZCode desktop app
+  on a second VNC display. Panels can be shown, hidden, maximized, resized and
+  swapped. Agents drive the visible browser through CDP with the bundled
+  `agent-browser`, and links opened from the container (logins included) open in that
+  browser. Tool state, logins and the browser profile live under
+  `/home/jovyan/srv/.state`. See [`agent-sandbox/DESIGN.md`](agent-sandbox/DESIGN.md);
+  `agent-sandbox/smoke-test.sh` and `agent-sandbox/ui-test.mjs` check a local build.
 - `code-server`, `code-server-arch`, `code-server-llm` - a sibling family of
   standalone development images with GitHub CLI. They share the same
   code-server + uv + s6 layout but each is built directly from its own external
@@ -91,6 +102,7 @@ make -C . build-kubecode
 make -C . build-kubecode-cuda-pytorch
 make -C . build-kubecode-edge
 make -C . build-kubecode-edge-cuda-pytorch
+make -C . build-agent-sandbox
 make -C . build-code-server
 make -C . build-code-server-arch
 make -C . build-code-server-llm

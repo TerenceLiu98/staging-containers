@@ -1,0 +1,4 @@
+# Sourced by service run scripts: runtime files stay off the persistent volume.
+export XDG_RUNTIME_DIR="/tmp/runtime-${NB_USER}"
+mkdir -p "${XDG_RUNTIME_DIR}"
+chmod 700 "${XDG_RUNTIME_DIR}"

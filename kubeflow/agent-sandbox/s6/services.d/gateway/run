@@ -1,0 +1,4 @@
+#!/command/with-contenv bash
+exec 2>&1
+echo "INFO: starting gateway on :8888 ..."
+exec nginx -e stderr -c /tmp/nginx/nginx.conf -g 'daemon off;'

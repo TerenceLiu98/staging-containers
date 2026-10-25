@@ -1,0 +1,4 @@
+#!/command/with-contenv bash
+exec 2>&1
+. /etc/agent-sandbox/runtime-env
+exec /etc/agent-sandbox/start-openbox "${DISPLAY}"

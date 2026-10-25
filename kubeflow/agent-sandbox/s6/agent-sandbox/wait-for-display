@@ -1,0 +1,15 @@
+#!/bin/bash
+# Block until the X server for $DISPLAY accepts connections.
+display_number="${DISPLAY#:}"
+display_number="${display_number%%.*}"
+socket="/tmp/.X11-unix/X${display_number}"
+
+for _ in $(seq 1 300); do
+  if [ -S "${socket}" ] && xdpyinfo >/dev/null 2>&1; then
+    exit 0
+  fi
+  sleep 0.2
+done
+
+echo "ERROR: X display ${DISPLAY} did not come up" >&2
+exit 1

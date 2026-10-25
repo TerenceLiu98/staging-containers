@@ -1,0 +1,7 @@
+#!/bin/bash
+# start-openbox <display>: window manager that maximizes every window without decorations.
+set -euo pipefail
+export DISPLAY="$1"
+/etc/agent-sandbox/wait-for-display
+xsetroot -solid "#1e1e1e" || true
+exec openbox --config-file /etc/agent-sandbox/openbox-rc.xml

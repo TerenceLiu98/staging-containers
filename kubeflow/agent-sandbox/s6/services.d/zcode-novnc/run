@@ -1,0 +1,4 @@
+#!/command/with-contenv bash
+exec 2>&1
+[ "${ZCODE_DESKTOP:-true}" = "true" ] || exec sleep infinity
+exec /etc/agent-sandbox/start-websockify "${ZCODE_DISPLAY}" 6081 5902

@@ -4,7 +4,7 @@
 
 | Category | Variants | README |
 | --- | --- | --- |
-| Kubeflow | base, jupyter, jupyter-cuda-pytorch, deepseek-harness, deepseek-harness-cuda-pytorch, opencode, opencode-cuda-pytorch, kubecode, kubecode-cuda-pytorch, code-server, code-server-arch, code-server-llm | [`kubeflow/README.md`](kubeflow/README.md) |
+| Kubeflow | base, jupyter, jupyter-cuda-pytorch, deepseek-harness, deepseek-harness-cuda-pytorch, opencode, opencode-cuda-pytorch, kubecode, kubecode-cuda-pytorch, agent-sandbox, code-server, code-server-arch, code-server-llm | [`kubeflow/README.md`](kubeflow/README.md) |
 | JupyterHub | foundation, base-notebook, mini-notebook, scipy-notebook, datascience-notebook (+ GPU chain), jupyterhub | [`jupyterhub/README.md`](jupyterhub/README.md) |
 | OpenVSCode Server | base, python, miniforge, rust | [`openvscode-server/README.md`](openvscode-server/README.md) |
 | Code Server | base | [`code-server/README.md`](code-server/README.md) |
@@ -54,6 +54,7 @@ make -C kubeflow build-kubecode
 make -C kubeflow build-kubecode-cuda-pytorch
 make -C kubeflow build-kubecode-edge
 make -C kubeflow build-kubecode-edge-cuda-pytorch
+make -C kubeflow build-agent-sandbox
 make -C kubeflow build-code-server-llm
 make -C kubeflow build-jupyter-cuda-pytorch
 ```

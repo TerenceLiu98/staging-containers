@@ -1,0 +1,15 @@
+#!/command/with-contenv bash
+exec 2>&1
+[ "${ZCODE_DESKTOP:-true}" = "true" ] || exec sleep infinity
+. /etc/agent-sandbox/runtime-env
+
+export DISPLAY="${ZCODE_DISPLAY}"
+/etc/agent-sandbox/wait-for-display || exit 1
+
+# Same as Chromium: stale single-instance locks from an old pod block startup.
+ZCODE_CONFIG_DIR="${HOME}/.config/ZCode"
+rm -f "${ZCODE_CONFIG_DIR}/SingletonLock" "${ZCODE_CONFIG_DIR}/SingletonSocket" "${ZCODE_CONFIG_DIR}/SingletonCookie"
+
+cd "${PERSISTENT_DIR}" || { echo "ERROR: failed to cd to ${PERSISTENT_DIR}"; exit 1; }
+echo "INFO: starting ZCode desktop on ${DISPLAY} ..."
+exec "${AGENT_SANDBOX_DIR}/bin/zcode-desktop"

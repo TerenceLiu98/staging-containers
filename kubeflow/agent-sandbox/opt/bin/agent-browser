@@ -1,0 +1,22 @@
+#!/bin/bash
+# Always drive the Chromium shown in the VNC panel. Without --cdp, agent-browser would
+# launch its own headless browser that nobody can see and that has none of the logins.
+set -euo pipefail
+
+real="/usr/local/bin/agent-browser-real"
+
+for arg in "$@"; do
+  case "${arg}" in
+    --cdp | --cdp=* | --auto-connect | --provider | --provider=* | -p | --engine | --engine=*)
+      exec "${real}" "$@"
+      ;;
+  esac
+done
+
+case "${1:-}" in
+  "" | -h | --help | help | -V | --version | version | install | upgrade | skills | connect | doctor)
+    exec "${real}" "$@"
+    ;;
+esac
+
+exec "${real}" --cdp "${BROWSER_CDP_PORT:-9222}" "$@"

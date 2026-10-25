@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Display</title>
+  <style>
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #1e1e1e;
+    }
+
+    #screen {
+      position: absolute;
+      inset: 0;
+    }
+
+    #status {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9aa1ab;
+      font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      pointer-events: none;
+    }
+
+    #status[hidden] {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="screen"></div>
+  <div id="status">Connecting…</div>
+  <script type="module">
+    // Minimal noVNC viewer: the remote display follows this page's size (down to a
+    // minimum), so the maximized app window fills the panel without scrollbars.
+    import RFB from "./vnc/core/rfb.js";
+
+    const screen = document.getElementById("screen");
+    const status = document.getElementById("status");
+    // ?socket=<path> selects the display; the default is the browser display.
+    const socketPath = new URLSearchParams(window.location.search).get("socket") || "vnc/websockify";
+    if (!/^[a-z0-9-]+\/websockify$/.test(socketPath)) {
+      throw new Error(`Unsupported socket path: ${socketPath}`);
+    }
+    const socketUrl = new URL(socketPath, window.location.href);
+    socketUrl.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+
+    // Below this size the panel scales the display down instead of shrinking it, so
+    // the app keeps a usable window. This also stops the feedback loop when the
+    // dashboard itself is opened inside the sandbox browser.
+    const MIN_REMOTE_WIDTH = 640;
+    const MIN_REMOTE_HEIGHT = 400;
+
+    let attempt = 0;
+    let rfb = null;
+
+    function applySizing() {
+      if (!rfb) {
+        return;
+      }
+      const small = screen.clientWidth < MIN_REMOTE_WIDTH || screen.clientHeight < MIN_REMOTE_HEIGHT;
+      rfb.scaleViewport = small;
+      rfb.resizeSession = !small;
+    }
+
+    function showStatus(text) {
+      status.textContent = text;
+      status.hidden = !text;
+    }
+
+    function connect() {
+      showStatus(attempt === 0 ? "Connecting…" : "Reconnecting…");
+      rfb = new RFB(screen, socketUrl.href, { shared: true });
+      rfb.clipViewport = false;
+      applySizing();
+      rfb.focusOnClick = true;
+      rfb.background = "#1e1e1e";
+
+      rfb.addEventListener("connect", () => {
+        attempt = 0;
+        showStatus("");
+        applySizing();
+      });
+      rfb.addEventListener("disconnect", () => {
+        rfb = null;
+        const delay = Math.min(5000, 500 * 2 ** attempt);
+        attempt += 1;
+        showStatus("Disconnected, reconnecting…");
+        window.setTimeout(connect, delay);
+      });
+      // Copy text selected in the remote browser to the local clipboard when allowed.
+      rfb.addEventListener("clipboard", (event) => {
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(event.detail.text).catch(() => {});
+        }
+      });
+    }
+
+    const XK_CONTROL_L = 0xffe3;
+    // On macOS, Cmd+<key> becomes Ctrl+<key> for the Linux browser.
+    const MAC_SHORTCUT_KEYS = new Set(["KeyA", "KeyC", "KeyF", "KeyL", "KeyR", "KeyV", "KeyX", "KeyY", "KeyZ"]);
+
+    function sendControlChord(code) {
+      const keysym = code.slice(3).toLowerCase().charCodeAt(0);
+      rfb.sendKey(XK_CONTROL_L, "ControlLeft", true);
+      rfb.sendKey(keysym, code);
+      rfb.sendKey(XK_CONTROL_L, "ControlLeft", false);
+    }
+
+    // Runs in the capture phase, before noVNC forwards the key. A paste first pushes the
+    // local clipboard to the remote side, then sends Ctrl+V.
+    window.addEventListener("keydown", async (event) => {
+      if (!rfb || event.altKey) {
+        return;
+      }
+      const commandChord = event.metaKey && !event.ctrlKey && MAC_SHORTCUT_KEYS.has(event.code);
+      const controlPaste = event.ctrlKey && !event.metaKey && event.code === "KeyV";
+      if (!commandChord && !controlPaste) {
+        return;
+      }
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (event.code === "KeyV" && navigator.clipboard && window.isSecureContext) {
+        try {
+          const text = await navigator.clipboard.readText();
+          if (text && rfb) {
+            rfb.clipboardPasteFrom(text);
+          }
+        } catch (error) {
+          // Clipboard permission denied; paste whatever the remote clipboard holds.
+        }
+      }
+      if (rfb) {
+        sendControlChord(event.code);
+      }
+    }, true);
+
+    new ResizeObserver(applySizing).observe(screen);
+    connect();
+  </script>
+</body>
+</html>
