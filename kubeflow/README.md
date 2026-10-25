@@ -33,25 +33,28 @@ graph TD
   Bubblewrap, sudo, and an enabled OpenSSH server. It uses the `ubuntu` user with
   password `ubuntu` and does not inherit from `base`.
 - `jupyter` - JupyterLab + Notebook on top of `base`.
-- `jupyter-cuda-pytorch` - `jupyter` plus the pinned CUDA builds of PyTorch,
-  torchaudio and torchvision. An alternate `Dockerfile.openvscode-server` in the
-  same directory additionally bundles OpenVSCode Server.
+- `jupyter-cuda-pytorch` - `jupyter` plus the pinned CUDA Toolkit, `nvcc`, build
+  tools, and CUDA builds of PyTorch, torchaudio and torchvision. An alternate
+  `Dockerfile.openvscode-server` in the same directory additionally bundles
+  OpenVSCode Server.
 - `deepseek-harness` - the pinned DeepSeek Harness Web UI on top of `base`.
   Harness remains bound to loopback; an nginx compatibility proxy exposes port
   8888 and rewrites its root-relative frontend, plugin, API, WebSocket and PWA
   paths for Kubeflow's `NB_PREFIX`. Its complete `DSH_HOME` lives on the user
   PVC under `/home/jovyan/srv/.state/deepseek-harness`.
 - `deepseek-harness-cuda-pytorch` - `deepseek-harness` plus the pinned CUDA
-  PyTorch stack and NVIDIA runtime capability declarations.
+  Toolkit, `nvcc`, CUDA PyTorch stack and NVIDIA runtime capability declarations.
 - `opencode` - the forked OpenCode Web server and GitHub CLI on top of `base`.
-- `opencode-cuda-pytorch` - `opencode` plus the pinned CUDA PyTorch stack.
+- `opencode-cuda-pytorch` - `opencode` plus the pinned CUDA Toolkit, `nvcc` and
+  CUDA PyTorch stack.
 - `kubecode` - `opencode` with Kubecode, Bubblewrap, GitHub CLI, and bundled
   OpenCode, Codex and Claude Code CLIs as ACP agents.
-- `kubecode-cuda-pytorch` - `kubecode` plus the pinned CUDA PyTorch stack.
+- `kubecode-cuda-pytorch` - `kubecode` plus the pinned CUDA Toolkit, `nvcc` and
+  CUDA PyTorch stack.
 - `kubecode-edge` - the pinned Kubecode release with the latest stable
   OpenCode, Codex and Claude Code versions resolved by automation.
-- `kubecode-edge-cuda-pytorch` - `kubecode-edge` plus the pinned CUDA PyTorch
-  stack.
+- `kubecode-edge-cuda-pytorch` - `kubecode-edge` plus the pinned CUDA Toolkit,
+  `nvcc` and CUDA PyTorch stack.
 - `agent-sandbox` - an all-in-one agent workspace on top of `base`, modelled on
   agent-infra/sandbox. Opening the notebook shows a multi-panel page with VS Code
   (code-server), a Chromium browser on a VNC display, a tmux-backed terminal, one
@@ -67,6 +70,7 @@ graph TD
   code-server + uv + s6 layout but each is built directly from its own external
   base image (Ubuntu, Arch Linux and NVIDIA CUDA respectively), so they have no
   image inheritance between them nor from the repo `base` image.
+
 `base-tailscale` starts both `tailscaled` and `sshd` when the container starts.
 Set `TS_AUTHKEY` to authenticate automatically and persist `/var/lib/tailscale`
 if the node identity should survive restarts. The default `TS_USERSPACE=true`
@@ -84,9 +88,12 @@ docker run -d --name base-tailscale \
 The image intentionally keeps the requested default `ubuntu` / `ubuntu`
 password. Change it before exposing SSH beyond a controlled environment.
 
-
 Version pins live in `../versions/kubeflow.env`. The `code-server-llm` image is
 built as a matrix from `../versions/code-server-llm-matrix.json`.
+
+Every CUDA-enabled image includes the version-matched CUDA Toolkit and must pass
+`nvcc --version` during its build. `CUDA_DEVEL_IMAGE` pins the NVIDIA devel image
+used to supply the Toolkit for Ubuntu-derived images.
 
 ## Build
 

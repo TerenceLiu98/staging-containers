@@ -336,6 +336,7 @@ jobs:
             echo "EDGE_CLAUDE_CODE_SHA256_ARM64=${EDGE_CLAUDE_CODE_SHA256_ARM64}"
             echo "UV_VERSION=${UV_VERSION}"
             echo "LLM_BASE_IMAGE=${LLM_BASE_IMAGE}"
+            echo "CUDA_DEVEL_IMAGE=${CUDA_DEVEL_IMAGE}"
             echo "PYTORCH_CUDA_INDEX=${PYTORCH_CUDA_INDEX}"
             echo "LLM_PYTORCH_CUDA_INDEX=${LLM_PYTORCH_CUDA_INDEX}"
             echo "VLLM_VERSION=${VLLM_VERSION}"
@@ -478,6 +479,7 @@ jobs:
               --build-arg "PROJECT_NAME=${PROJECT_NAME}" \
               --build-arg "REGISTRY_PREFIX=${REGISTRY_PREFIX}" \
               --build-arg "CUDA_VERSION=${CUDA_VERSION}" \
+              --build-arg "CUDA_DEVEL_IMAGE=${CUDA_DEVEL_IMAGE}" \
               --build-arg "PYTORCH_VERSION=${PYTORCH_VERSION}" \
               --build-arg "TORCHAUDIO_VERSION=${TORCHAUDIO_VERSION}" \
               --build-arg "TORCHVISION_VERSION=${TORCHVISION_VERSION}" \
@@ -498,6 +500,7 @@ jobs:
               --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
               --build-arg "BASE_IMAGE_VERSION=${BASE_IMAGE_VERSION}" \
               --build-arg "CUDA_VERSION=${CUDA_VERSION}" \
+              --build-arg "CUDA_DEVEL_IMAGE=${CUDA_DEVEL_IMAGE}" \
               --build-arg "CODESERVER_VERSION=${CODESERVER_VERSION}" \
               --build-arg "UV_VERSION=${UV_VERSION}" \
               --build-arg "PYTHON_VERSION=${PYTHON_VERSION}" \
@@ -568,6 +571,7 @@ jobs:
               --build-arg "PROJECT_NAME=${PROJECT_NAME}" \
               --build-arg "REGISTRY_PREFIX=${REGISTRY_PREFIX}" \
               --build-arg "CUDA_VERSION=${CUDA_VERSION}" \
+              --build-arg "CUDA_DEVEL_IMAGE=${CUDA_DEVEL_IMAGE}" \
               --build-arg "PYTORCH_VERSION=${PYTORCH_VERSION}" \
               --build-arg "TORCHAUDIO_VERSION=${TORCHAUDIO_VERSION}" \
               --build-arg "TORCHVISION_VERSION=${TORCHVISION_VERSION}" \
@@ -606,6 +610,7 @@ jobs:
               --build-arg "PROJECT_NAME=${PROJECT_NAME}" \
               --build-arg "REGISTRY_PREFIX=${REGISTRY_PREFIX}" \
               --build-arg "CUDA_VERSION=${CUDA_VERSION}" \
+              --build-arg "CUDA_DEVEL_IMAGE=${CUDA_DEVEL_IMAGE}" \
               --build-arg "PYTORCH_VERSION=${PYTORCH_VERSION}" \
               --build-arg "TORCHAUDIO_VERSION=${TORCHAUDIO_VERSION}" \
               --build-arg "TORCHVISION_VERSION=${TORCHVISION_VERSION}" \
@@ -669,6 +674,7 @@ jobs:
               --build-arg "PROJECT_NAME=${PROJECT_NAME}" \
               --build-arg "REGISTRY_PREFIX=${REGISTRY_PREFIX}" \
               --build-arg "CUDA_VERSION=${CUDA_VERSION}" \
+              --build-arg "CUDA_DEVEL_IMAGE=${CUDA_DEVEL_IMAGE}" \
               --build-arg "PYTORCH_VERSION=${PYTORCH_VERSION}" \
               --build-arg "TORCHAUDIO_VERSION=${TORCHAUDIO_VERSION}" \
               --build-arg "TORCHVISION_VERSION=${TORCHVISION_VERSION}" \
@@ -716,6 +722,7 @@ jobs:
               --build-arg "PROJECT_NAME=${PROJECT_NAME}" \
               --build-arg "REGISTRY_PREFIX=${REGISTRY_PREFIX}" \
               --build-arg "CUDA_VERSION=${CUDA_VERSION}" \
+              --build-arg "CUDA_DEVEL_IMAGE=${CUDA_DEVEL_IMAGE}" \
               --build-arg "PYTORCH_VERSION=${PYTORCH_VERSION}" \
               --build-arg "TORCHAUDIO_VERSION=${TORCHAUDIO_VERSION}" \
               --build-arg "TORCHVISION_VERSION=${TORCHVISION_VERSION}" \

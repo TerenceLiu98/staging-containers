@@ -1,6 +1,11 @@
 ARG TARGETPLATFORM=linux/amd64
 ARG BASE_IMAGE=ubuntu
 ARG BASE_IMAGE_VERSION=24.04
+ARG CUDA_VERSION
+ARG CUDA_DEVEL_IMAGE
+
+FROM --platform=$TARGETPLATFORM ${CUDA_DEVEL_IMAGE} AS cuda-devel
+
 FROM --platform=$TARGETPLATFORM ${BASE_IMAGE}:${BASE_IMAGE_VERSION}
 
 ARG TARGETPLATFORM
@@ -33,7 +38,9 @@ ENV VIRTUAL_ENV=/opt/code-server
 ENV UV_PYTHON_INSTALL_DIR=/opt/uv/python
 ENV UV_CACHE_DIR=/opt/uv/cache
 ENV UV_LINK_MODE=hardlink
-ENV PATH=/opt/code-server/bin:/home/${NB_USER}/.local/bin:/usr/local/bin:${PATH}
+ENV CUDA_HOME=/usr/local/cuda
+ENV PATH=/usr/local/cuda/bin:/opt/code-server/bin:/home/${NB_USER}/.local/bin:/usr/local/bin:${PATH}
+ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 ENV NVIDIA_REQUIRE_CUDA="cuda>=${CUDA_VERSION}"
@@ -86,6 +93,11 @@ RUN export DEBIAN_FRONTEND=noninteractive \
  && gh --version \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
+
+COPY --from=cuda-devel /usr/local/cuda-${CUDA_VERSION}/ /usr/local/cuda-${CUDA_VERSION}/
+RUN ln -sfn "cuda-${CUDA_VERSION}" /usr/local/cuda \
+ && test -x "${CUDA_HOME}/bin/nvcc" \
+ && nvcc --version
 
 RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen \
  && locale-gen

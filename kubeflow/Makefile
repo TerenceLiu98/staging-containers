@@ -57,7 +57,8 @@ EDGE_CLAUDE_CODE_VERSION ?= 2.1.220
 EDGE_CLAUDE_CODE_SHA256_AMD64 ?= 674f61f20ff306f3100cf9200e4c36c4b70278b5bef2884549819b942a89c863
 EDGE_CLAUDE_CODE_SHA256_ARM64 ?= 159e4a51d796f3bf14677577100f7efb845611b1ceaf0c30cbd8d4650d942185
 UV_VERSION ?= 0.11.16
-LLM_BASE_IMAGE ?= nvidia/cuda:13.0.3-devel-ubuntu22.04
+CUDA_DEVEL_IMAGE ?= nvidia/cuda:13.0.3-devel-ubuntu24.04
+LLM_BASE_IMAGE ?= nvidia/cuda:13.0.3-devel-ubuntu24.04
 PYTORCH_CUDA_INDEX ?= cu130
 LLM_PYTORCH_CUDA_INDEX ?= cu130
 VLLM_VERSION ?= 0.19.1
@@ -165,6 +166,7 @@ build-jupyter-cuda-pytorch: build-jupyter-base
 		--build-arg PROJECT_NAME=$(PROJECT_NAME) \
 		--build-arg REGISTRY_PREFIX=$(REGISTRY_PREFIX) \
 		--build-arg CUDA_VERSION=$(CUDA_VERSION) \
+		--build-arg CUDA_DEVEL_IMAGE=$(CUDA_DEVEL_IMAGE) \
 		--build-arg PYTORCH_VERSION=$(PYTORCH_VERSION) \
 		--build-arg TORCHAUDIO_VERSION=$(TORCHAUDIO_VERSION) \
 		--build-arg TORCHVISION_VERSION=$(TORCHVISION_VERSION) \
@@ -185,6 +187,7 @@ build-code-server:
 		--build-arg BASE_IMAGE=$(BASE_IMAGE) \
 		--build-arg BASE_IMAGE_VERSION=$(BASE_IMAGE_VERSION) \
 		--build-arg CUDA_VERSION=$(CUDA_VERSION) \
+		--build-arg CUDA_DEVEL_IMAGE=$(CUDA_DEVEL_IMAGE) \
 		--build-arg CODESERVER_VERSION=$(CODESERVER_VERSION) \
 		--build-arg UV_VERSION=$(UV_VERSION) \
 		--build-arg PYTHON_VERSION=$(PYTHON_VERSION) \
@@ -252,6 +255,7 @@ build-deepseek-harness-cuda-pytorch: build-deepseek-harness
 		--build-arg PROJECT_NAME=$(PROJECT_NAME) \
 		--build-arg REGISTRY_PREFIX=$(REGISTRY_PREFIX) \
 		--build-arg CUDA_VERSION=$(CUDA_VERSION) \
+		--build-arg CUDA_DEVEL_IMAGE=$(CUDA_DEVEL_IMAGE) \
 		--build-arg PYTORCH_VERSION=$(PYTORCH_VERSION) \
 		--build-arg TORCHAUDIO_VERSION=$(TORCHAUDIO_VERSION) \
 		--build-arg TORCHVISION_VERSION=$(TORCHVISION_VERSION) \
@@ -288,6 +292,7 @@ build-opencode-cuda-pytorch: build-opencode
 		--build-arg PROJECT_NAME=$(PROJECT_NAME) \
 		--build-arg REGISTRY_PREFIX=$(REGISTRY_PREFIX) \
 		--build-arg CUDA_VERSION=$(CUDA_VERSION) \
+		--build-arg CUDA_DEVEL_IMAGE=$(CUDA_DEVEL_IMAGE) \
 		--build-arg PYTORCH_VERSION=$(PYTORCH_VERSION) \
 		--build-arg TORCHAUDIO_VERSION=$(TORCHAUDIO_VERSION) \
 		--build-arg TORCHVISION_VERSION=$(TORCHVISION_VERSION) \
@@ -348,6 +353,7 @@ build-kubecode-cuda-pytorch: build-kubecode
 		--build-arg PROJECT_NAME=$(PROJECT_NAME) \
 		--build-arg REGISTRY_PREFIX=$(REGISTRY_PREFIX) \
 		--build-arg CUDA_VERSION=$(CUDA_VERSION) \
+		--build-arg CUDA_DEVEL_IMAGE=$(CUDA_DEVEL_IMAGE) \
 		--build-arg PYTORCH_VERSION=$(PYTORCH_VERSION) \
 		--build-arg TORCHAUDIO_VERSION=$(TORCHAUDIO_VERSION) \
 		--build-arg TORCHVISION_VERSION=$(TORCHVISION_VERSION) \
@@ -393,6 +399,7 @@ build-kubecode-edge-cuda-pytorch: build-kubecode-edge
 		--build-arg PROJECT_NAME=$(PROJECT_NAME) \
 		--build-arg REGISTRY_PREFIX=$(REGISTRY_PREFIX) \
 		--build-arg CUDA_VERSION=$(CUDA_VERSION) \
+		--build-arg CUDA_DEVEL_IMAGE=$(CUDA_DEVEL_IMAGE) \
 		--build-arg PYTORCH_VERSION=$(PYTORCH_VERSION) \
 		--build-arg TORCHAUDIO_VERSION=$(TORCHAUDIO_VERSION) \
 		--build-arg TORCHVISION_VERSION=$(TORCHVISION_VERSION) \

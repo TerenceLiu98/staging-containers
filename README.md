@@ -101,9 +101,10 @@ GitHub Actions:
 
 ## Kubeflow VS Code Images
 
-The standard `kubeflow/code-server` image is the lightweight VS Code image. It
-does not use conda; it uses `uv` and installs its default Python environment
-under `/opt/code-server`.
+The standard `kubeflow/code-server` image is the CUDA-enabled VS Code image. It
+does not use conda; it uses `uv`, installs its default Python environment under
+`/opt/code-server`, and includes the pinned CUDA Toolkit, `nvcc`, build tools,
+and CUDA PyTorch stack.
 
 The `kubeflow/code-server-arch` image is the Arch Linux development image. It
 uses `archlinux:base` (pinned by `ARCHLINUX_BASE_IMAGE` and
@@ -168,8 +169,9 @@ DeepSeek Harness is published in two variants:
 
 - `latest-deepseek-harness` is the lightweight base image with Python and conda.
 - `latest-deepseek-harness-cuda-pytorch` extends the same Harness image with
-  the pinned CUDA builds of PyTorch, torchaudio, and torchvision. It declares
-  NVIDIA `compute` and `utility` capabilities for GPU-enabled Kubeflow pods.
+  the pinned CUDA Toolkit, `nvcc`, build tools, and CUDA builds of PyTorch,
+  torchaudio, and torchvision. It declares NVIDIA `compute` and `utility`
+  capabilities for GPU-enabled Kubeflow pods.
 
 The images use pinned release and wrapper revision tags. The GPU tag also
 includes the CUDA and PyTorch versions:
@@ -197,9 +199,10 @@ OpenCode is published in two variants:
 
 - `latest-opencode` is the lightweight base image with Python and conda.
 - `latest-opencode-cuda-pytorch` extends the same OpenCode image with the pinned
-  CUDA builds of PyTorch, torchaudio, and torchvision. It declares NVIDIA
-  `compute` and `utility` capabilities so GPU-enabled Kubeflow pods can expose
-  the GPU and `nvidia-smi` through the NVIDIA Container Runtime.
+  CUDA Toolkit, `nvcc`, build tools, and CUDA builds of PyTorch, torchaudio, and
+  torchvision. It declares NVIDIA `compute` and `utility` capabilities so
+  GPU-enabled Kubeflow pods can expose the GPU and `nvidia-smi` through the
+  NVIDIA Container Runtime.
 
 The versioned GPU image tag includes the OpenCode, CUDA, and PyTorch versions:
 
@@ -258,8 +261,8 @@ Kubecode is published in two variants:
 - `latest-kubecode` is the lightweight Python/conda image with Kubecode,
   OpenCode, Codex, and Claude Code.
 - `latest-kubecode-cuda-pytorch` adds the pinned CUDA builds of PyTorch,
-  torchaudio, and torchvision, plus NVIDIA `compute` and `utility` runtime
-  capabilities.
+  torchaudio, and torchvision, the version-matched CUDA Toolkit and `nvcc`, plus
+  NVIDIA `compute` and `utility` runtime capabilities.
 
 Each variant also has an edge channel. `latest-kubecode-edge` and
 `latest-kubecode-edge-cuda-pytorch` retain the pinned Kubecode release but use

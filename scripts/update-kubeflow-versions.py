@@ -386,6 +386,7 @@ def update_versions(current, include_code_server):
 
     vllm_version, torch_version, cuda_index, xformers_version = selected
     cuda_version = CUDA_VERSION_BY_INDEX[cuda_index]
+    cuda_devel_image = latest_cuda_devel_image(cuda_version)
 
     updates.update(
         {
@@ -396,7 +397,8 @@ def update_versions(current, include_code_server):
             "PYTORCH_CUDA_INDEX": cuda_index,
             "LLM_PYTORCH_CUDA_INDEX": cuda_index,
             "CUDA_VERSION": cuda_version,
-            "LLM_BASE_IMAGE": latest_cuda_devel_image(cuda_version),
+            "CUDA_DEVEL_IMAGE": cuda_devel_image,
+            "LLM_BASE_IMAGE": cuda_devel_image,
             "XFORMERS_VERSION": xformers_version,
         }
     )
