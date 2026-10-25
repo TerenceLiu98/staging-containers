@@ -2,7 +2,7 @@
 
 状态：已实现（2026-10-25）。这是一个**独立的** all-in-one agent 工作区镜像，不依赖 kubeflow 的构建体系；Kubeflow 特异性适配（registry 接入、集群验证）后续以薄镜像层单独做。linux/arm64 已在本地构建，并通过 `smoke-test.sh` 和 `ui-test.mjs` 的全部检查；linux/amd64 在 qemu 下验证了所有下载、校验和以及 Chromium 安装，运行时检查需要在真实 amd64 环境（CI）上跑（见 §9）。
 
-参照 [agent-infra/sandbox](https://github.com/agent-infra/sandbox)（下文简称 AIO）的使用体验，做了一个 Kubeflow Notebook 镜像。打开 Notebook 后进入一个多面板首页，VS Code、浏览器、终端和各个 coding agent 并排显示：
+参照 [agent-infra/sandbox](https://github.com/agent-infra/sandbox)（下文简称 AIO）的使用体验，做了一个单容器 agent 工作区镜像。打开后是一个多面板首页，VS Code、浏览器、终端和各个 coding agent 并排显示：
 
 - 面板可以显示、隐藏、最大化、拖动调整大小，也可以拖动交换位置；
 - 浏览器跑在 VNC 里，人能看到；agent 通过 CDP 和 agent-browser 操作的就是同一个浏览器。
@@ -40,6 +40,7 @@ graph LR
         gw -->|/code/| cs[code-server :8200]
         gw -->|/vnc/| nv1[websockify :6080] --> x1[Xvnc :1 + openbox<br/>Chromium, CDP :9222]
         gw -->|/zcode-vnc/| nv2[websockify :6081] --> x2[Xvnc :2 + openbox<br/>ZCode 桌面版]
+        gw -->|/claude-vnc/| nv3[websockify :6082] --> x3[Xvnc :3 + openbox<br/>Claude Desktop]
         gw -->|/terminal/| tt[ttyd :7681] --> tmux[tmux 会话<br/>main / codex / claude / opencode]
         gw -->|/cdp/| x1
         tmux --> ab[agent-browser] -->|--cdp 9222| x1
@@ -56,6 +57,8 @@ graph LR
 | `browser` | Chromium（Playwright 构建） | `127.0.0.1:9222` |
 | `zcode-xvnc` / `zcode-wm` / `zcode-novnc` | Xvnc `:2`、openbox、websockify | `127.0.0.1:5902` / — / `127.0.0.1:6081` |
 | `zcode-desktop` | ZCode 桌面版（Electron） | — |
+| `claude-xvnc` / `claude-wm` / `claude-novnc` | Xvnc `:3`、openbox、websockify | `127.0.0.1:5903` / — / `127.0.0.1:6082` |
+| `claude-desktop` | Claude Desktop（Electron） | — |
 | `code-server` | code-server | `127.0.0.1:8200` |
 | `terminal` | ttyd，入口是 `/opt/agent-sandbox/bin/session` | `127.0.0.1:7681` |
 
@@ -65,7 +68,7 @@ graph LR
   3. `03-render-gateway`：按 `NB_PREFIX` 用 envsubst 渲染 nginx 配置，再跑 `nginx -t` 校验。
 - legacy `services.d` 不支持声明依赖，所以依赖 X 的服务都先通过 `wait-for-display` 等 X 起来再启动。服务挂掉后由 s6 自动重启。
 - Xvnc、openbox、websockify 的启动逻辑放在 `/etc/agent-sandbox/start-*`，两个 display 共用。
-- 设置 `ZCODE_DESKTOP=false` 可以让 `:2` 上的四个服务都只 `sleep`，节省大约 600 MB 内存。
+- 设置 `ZCODE_DESKTOP=false` / `CLAUDE_DESKTOP=false` 可以让对应 display 上的四个服务都只 `sleep`，各节省几百 MB 内存。
 
 ## 3. 浏览器
 
@@ -89,16 +92,22 @@ graph LR
 | agent | 安装方式 | 在首页里怎么用 |
 | --- | --- | --- |
 | Codex | GitHub release（musl），版本和 sha256 复用 `CODEX_CLI_*` | 面板就是 tmux 会话 `codex` |
-| Claude Code | `downloads.claude.ai` 下载的二进制，复用 `CLAUDE_CODE_*` | tmux 会话 `claude` |
+| Claude Code（CLI） | `downloads.claude.ai` 下载的二进制，复用 `CLAUDE_CODE_*` | tmux 会话 `claude`（`terminal/?arg=claude`） |
+| Claude Desktop | 官方 apt 仓库的 deb（`CLAUDE_DESKTOP_*`，从 pool 下载并校验 sha256） | **Claude 面板**：桌面版跑在 VNC `:3` 上 |
 | OpenCode | 上游 `anomalyco/opencode` release（`AGENT_SANDBOX_OPENCODE_*`）。仓库里的 fork 只发布了 x64，而这个镜像只用 TUI，不需要 base-path 补丁 | tmux 会话 `opencode` |
 | ZCode | 官方桌面版 deb（`ZCODE_*`，sha512 来自 CDN 上的 `latest.yml`） | 桌面版跑在第二个 VNC display 上，有单独的面板 |
 | agent-browser | npm tarball（sha512）里自带的原生二进制，不需要 Node | 在任意终端里使用 |
 
-- **ZCode**：官方没有发布 Linux CLI。桌面版 deb 里带了 CLI 的打包文件 `resources/glm/zcode.cjs`，但它缺少终端 UI（`@zcode/tui` 没有发布），所以：
+- **ZCode**：官方没有发布 Linux CLI。桌面版 deb 里带了 CLI 的打包文件 `resources/glm/zcode.cjs`，但它缺少终端 UI（`@zcode/tui` 没有发布），所以（ZCode 面板同样是桌面版）：
   - ZCode 面板运行的是桌面版（`zcode-desktop`）；
   - `zcode` 命令用 Node 24（`/opt/node24`）运行 `zcode.cjs`，可以用于 `zcode -p`、`app-server`、`doctor` 等无界面场景；
   - CLI 查找 provider 配置的路径是 `glm/provider/`，所以把它链接到 `config/provider/`；
   - deb 注册的 `zcode://` 登录回调交给 `zcode-desktop` 包装脚本处理。它会加上容器里必需的启动参数，并把 URL 交给正在运行的实例。
+- **Claude Desktop**：Linux beta，官方 apt 仓库（amd64/arm64）。镜像里：
+  - 从 pool 下载 pin 版本的 deb 安装；`/etc/default/claude-desktop` 写 `CLAUDE_DESKTOP_ADD_REPO="false"`，阻止 postinst 在镜像里注册 apt 仓库；`--no-install-recommends` 跳过 Cowork 用的 QEMU（容器里没有 KVM，装了也用不了）；
+  - `/usr/local/bin/claude-desktop` 是包装脚本：补上 `--no-sandbox --disable-gpu` 等容器必需参数，并在 `dbus-run-session` 里启动一个解锁的 gnome-keyring——应用的登录态走 libsecret，没有 keyring 就存不住；
+  - `claude://` 深链接由它处理；登录打开的网页走 `$BROWSER`（共享 Chromium），回调也在容器内完成；
+  - Cowork 需要 KVM 虚拟化，容器里不可用；Chat 和 Claude Code 会话正常。
 - **终端会话**：ttyd 带 `--url-arg` 启动，`terminal/?arg=<name>` 进入同名 tmux 会话。
   - `session` 脚本只接受 `main`、`codex`、`claude`、`opencode` 这几个名字。
   - agent 退出后，会话里会留下一个 shell，面板不会直接关掉。
@@ -119,7 +128,7 @@ graph LR
 | `${NB_PREFIX}`（不带末尾斜杠） | 302 到 `${NB_PREFIX}/` |
 | `/` | `/opt/agent-sandbox/dashboard/` |
 | `/code/` | code-server（剥掉前缀后转发） |
-| `/vnc/`、`/zcode-vnc/` | websockify 以及 noVNC 的静态文件 |
+| `/vnc/`、`/zcode-vnc/`、`/claude-vnc/` | websockify 以及 noVNC 的静态文件 |
 | `/terminal/` | ttyd（用 `--base-path` 处理前缀，不剥前缀） |
 | `/cdp/` | Chromium |
 
@@ -139,6 +148,8 @@ graph LR
 | `~/.config/opencode`、`~/.local/share/opencode`、`~/.cache/opencode`、`~/.local/state/opencode` | `opencode/{config,data,cache,state}` |
 | `~/.zcode`（CLI 状态） | `zcode` |
 | `~/.config/ZCode`（桌面版，启动前同样清理 `Singleton*` 锁文件） | `zcode-desktop` |
+| `~/.config/Claude`（Claude Desktop 的数据，启动前清理 `Singleton*` 锁文件） | `claude-desktop` |
+| `~/.local/share/keyring`（gnome-keyring；Claude Desktop 的登录态存在这里） | `keyring` |
 | `~/.agent-browser` | `agent-browser` |
 | `~/.config/sandbox-browser`（Chromium profile） | `browser` |
 | `~/.local/share/code-server/{User,extensions}`、`~/.config/code-server` | `code-server/...` |
@@ -158,7 +169,7 @@ graph LR
 - **快捷键**：`Alt+1…7` 切换对应面板的显示，`Alt+Enter` 最大化当前面板。所有 iframe 同源，快捷键在 iframe 内的 window 上用 capture 阶段监听，焦点在 VS Code 或终端里时也有效。
 - **状态**：可见面板、顺序、布局和分隔条比例都存在 `localStorage`。读写都包了 try/catch，存储不可用时退回默认布局。也可以用 `?apps=code,browser&layout=columns&max=browser` 直接指定。
 - **iframe 从不在 DOM 中移动**：移动会触发 iframe 重新加载。所有面板都是绝对定位，切换布局只重新计算位置；隐藏的面板保留原来的尺寸，只设成 `visibility:hidden`，避免 noVNC 看到 0×0 的视口。拖动时在 iframe 上面加一层透明遮罩，否则鼠标事件会被 iframe 吞掉。
-- **`display.html`**：一个自己写的极简 noVNC 页面，用 `?socket=vnc/websockify` 或 `?socket=zcode-vnc/websockify` 选择连哪个 display，比完整的 `vnc.html` 简洁。
+- **`display.html`**：一个自己写的极简 noVNC 页面，用 `?socket=vnc/websockify`、`?socket=zcode-vnc/websockify` 或 `?socket=claude-vnc/websockify` 选择连哪个 display，比完整的 `vnc.html` 简洁。三个桌面应用面板（Browser、ZCode、Claude）都用它。
   - 远端分辨率跟随面板尺寸（`resizeSession`），窗口始终铺满。
   - 面板小于 640×400 时改为缩放显示。这也防止了一个反馈循环：如果在 sandbox 自己的浏览器里打开首页，Browser 面板会不断缩小自己所在的 display。
   - 断线后自动重连，退避时间逐步增加。
@@ -178,12 +189,12 @@ agent-sandbox/
 ├── smoke-test.sh      # 容器级检查：路由、WebSocket、进程、CLI、agent-browser、持久化
 ├── ui-test.mjs        # 首页交互检查（用宿主机上的 headless Chrome）
 ├── opt/               # → /opt/agent-sandbox
-│   ├── bin/{session,agent-browser,open-url,zcode-desktop}
+│   ├── bin/{session,agent-browser,open-url,zcode-desktop,claude-desktop}
 │   ├── agent-config/AGENTS.md
 │   └── dashboard/{index.html,style.css,app.js,display.html}
 └── s6/                # → /etc
     ├── cont-init.d/{02-init-persistent-home,03-render-gateway}
-    ├── services.d/{gateway,xvnc,wm,novnc,browser,code-server,terminal,zcode-*}/run
+    ├── services.d/{gateway,xvnc,wm,novnc,browser,code-server,terminal,zcode-*,claude-*}/run
     └── agent-sandbox/{nginx.conf.tmpl,nginx-proxy.conf,openbox-rc.xml,tmux.conf,profile.sh,
                        runtime-env,start-xvnc,start-openbox,start-websockify,wait-for-display}
 ```

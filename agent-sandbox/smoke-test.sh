@@ -91,6 +91,7 @@ websocket_upgrades() {
 check "terminal websocket upgrades" websocket_upgrades "terminal/ws" -H "Sec-WebSocket-Protocol: tty"
 check "VNC websocket upgrades" websocket_upgrades "vnc/websockify" -H "Sec-WebSocket-Protocol: binary"
 check "ZCode VNC websocket upgrades" websocket_upgrades "zcode-vnc/websockify" -H "Sec-WebSocket-Protocol: binary"
+check "Claude VNC websocket upgrades" websocket_upgrades "claude-vnc/websockify" -H "Sec-WebSocket-Protocol: binary"
 check "CDP websocket upgrades" bash -c \
   "$(declare -f websocket_upgrades); BASE='${BASE}'; websocket_upgrades \"cdp/devtools/browser/\$(curl -fsS '${BASE}/cdp/json/version' | jq -r .webSocketDebuggerUrl | sed 's|.*/devtools/browser/||')\""
 check "unknown path is 404" bash -c \
@@ -99,12 +100,14 @@ check "unknown path is 404" bash -c \
 echo "== processes and users"
 check "services run as jovyan" bash -c \
   "${CONTAINER_CLI} exec ${NAME} ps -o user= -C Xvnc,nginx,ttyd,websockify,openbox | grep -vq root"
-for port in 5901 5902 6080 6081 7681 8200 9222; do
+for port in 5901 5902 5903 6080 6081 6082 7681 8200 9222; do
   check "port ${port} listens on loopback only" bash -c \
     "${CONTAINER_CLI} exec ${NAME} ss -ltnH | awk '\$4 ~ /:${port}\$/ {print \$4}' | grep -v -E '^(127\\.0\\.0\\.1|\\[::1\\]):' | grep -q . && exit 1 || exit 0"
 done
 
 check "ZCode desktop is running" bash -c "${CONTAINER_CLI} exec ${NAME} pgrep -u jovyan -f /opt/ZCode/zcode"
+check "Claude Desktop is running" bash -c "${CONTAINER_CLI} exec ${NAME} pgrep -u jovyan -f /usr/lib/claude-desktop"
+check "Claude keyring service is up" bash -c "${CONTAINER_CLI} exec ${NAME} pgrep -u jovyan -f gnome-keyring-daemon"
 
 echo "== agent CLIs"
 for command in codex claude opencode zcode agent-browser chromium; do
@@ -136,6 +139,8 @@ check "agent-browser skill seeded" in_container "test -f ~/.claude/skills/agent-
 check "agent-browser socket kept off the volume" in_container "! find /home/jovyan/srv/.state -type s | grep -q ."
 check "no root-owned leftovers in /tmp" bash -c "test -z \"\$(${CONTAINER_CLI} exec ${NAME} find /tmp -mindepth 1 -maxdepth 1 -user root ! -name .X11-unix)\""
 check "browser profile on the volume" in_container "test -d /home/jovyan/srv/.state/browser/Default"
+check "Claude Desktop data on the volume" in_container "test -d /home/jovyan/srv/.state/claude-desktop"
+check "claude button points at the desktop app" bash -c "curl -fsS \"${BASE}/\" | grep -q \"display.html?socket=claude-vnc/websockify\" || ${CONTAINER_CLI} exec ${NAME} grep -q claude-vnc /opt/agent-sandbox/dashboard/app.js"
 check "ZCode desktop data on the volume" in_container "test -d /home/jovyan/srv/.state/zcode-desktop/session"
 check "zcode:// links go to the wrapper" in_container "grep -q '^Exec=/usr/local/bin/zcode-desktop ' /usr/share/applications/zcode.desktop"
 "${CONTAINER_CLI}" rm -f "${NAME}" >/dev/null
@@ -146,6 +151,7 @@ check "claude marker survived" in_container "test -f ~/.claude/smoke-marker"
 check "git identity survived" in_container "test \"\$(git config --global user.name)\" = smoke"
 check "browser restarted after hostname change" curl -fsS "${BASE}/cdp/json/version"
 check "ZCode desktop restarted after hostname change" bash -c "sleep 5; ${CONTAINER_CLI} exec ${NAME} pgrep -u jovyan -f /opt/ZCode/zcode"
+check "Claude Desktop restarted after hostname change" bash -c "${CONTAINER_CLI} exec ${NAME} pgrep -u jovyan -f /usr/lib/claude-desktop"
 
 if [ "${KEEP_SCREENSHOT:-}" != "" ]; then
   "${CONTAINER_CLI}" cp "${NAME}:/home/jovyan/srv/smoke-dashboard.png" "${KEEP_SCREENSHOT}" >/dev/null && echo "screenshot: ${KEEP_SCREENSHOT}"

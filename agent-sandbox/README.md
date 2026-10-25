@@ -8,8 +8,11 @@ multi-panel dashboard:
 - **Browser** — a real Chromium on a VNC display; agents drive the same visible
   window over CDP with the bundled [`agent-browser`](https://github.com/vercel-labs/agent-browser)
 - **Terminal** — tmux-backed sessions that survive page reloads
-- **Codex, Claude Code, OpenCode** — one terminal panel each
-- **ZCode** — the ZCode desktop app on a second VNC display
+- **Codex, OpenCode** — one terminal panel each (Claude Code CLI also
+  available as a terminal session)
+- **Claude** — the Claude Desktop app on a VNC display (sign-in persisted
+  via gnome-keyring)
+- **ZCode** — the ZCode desktop app on another VNC display
 
 Links opened inside the container (OAuth logins included) open as tabs in the
 shared browser. Tool state, logins and browser profiles persist under
@@ -29,8 +32,8 @@ docker run -d --name agent-sandbox \
 ```
 
 Optional: `-e NB_PREFIX=/some/prefix` to serve under a path prefix (any reverse
-proxy works; Kubeflow sets this automatically), `-e ZCODE_DESKTOP=false` to skip
-the second display and save ~600 MB.
+proxy works; Kubeflow sets this automatically), `-e ZCODE_DESKTOP=false` or
+`-e CLAUDE_DESKTOP=false` to skip a desktop app's display and save memory.
 
 ## Build and test
 

@@ -11,7 +11,7 @@ const APPS = [
   { id: "browser", title: "Browser", src: "display.html", probe: "cdp/json/version" },
   { id: "terminal", title: "Terminal", src: "terminal/", probe: "terminal/" },
   { id: "codex", title: "Codex", src: "terminal/?arg=codex", probe: "terminal/" },
-  { id: "claude", title: "Claude", src: "terminal/?arg=claude", probe: "terminal/" },
+  { id: "claude", title: "Claude", src: "display.html?socket=claude-vnc/websockify", probe: "claude-vnc/core/rfb.js" },
   { id: "opencode", title: "OpenCode", src: "terminal/?arg=opencode", probe: "terminal/" },
   { id: "zcode", title: "ZCode", src: "display.html?socket=zcode-vnc/websockify", probe: "zcode-vnc/core/rfb.js" },
 ];

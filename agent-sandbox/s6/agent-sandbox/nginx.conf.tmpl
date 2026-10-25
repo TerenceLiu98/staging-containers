@@ -72,6 +72,12 @@ http {
             proxy_set_header Host $host;
         }
 
+        location ${PREFIX}/claude-vnc/ {
+            include /etc/agent-sandbox/nginx-proxy.conf;
+            proxy_pass http://127.0.0.1:6082/;
+            proxy_set_header Host $host;
+        }
+
         location ${PREFIX}/terminal/ {
             include /etc/agent-sandbox/nginx-proxy.conf;
             proxy_pass http://127.0.0.1:7681;

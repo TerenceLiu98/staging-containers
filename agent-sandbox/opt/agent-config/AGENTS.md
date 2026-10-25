@@ -9,6 +9,11 @@ same workspace in their browser.
   the notebook restarts.
 - Files downloaded by the browser land in `/home/jovyan/srv/Downloads`.
 
+## Apps
+
+- The Claude panel in the dashboard is the Claude Desktop app; the `claude` CLI is
+  still available in a terminal (`terminal/?arg=claude`).
+
 ## Browser
 
 - A Chromium window is already running and is shown to the person in the Browser panel.

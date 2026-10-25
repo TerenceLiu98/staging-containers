@@ -1,0 +1,15 @@
+#!/command/with-contenv bash
+exec 2>&1
+[ "${CLAUDE_DESKTOP:-true}" = "true" ] || exec sleep infinity
+. /etc/agent-sandbox/runtime-env
+
+export DISPLAY="${CLAUDE_DESKTOP_DISPLAY}"
+/etc/agent-sandbox/wait-for-display || exit 1
+
+# Same as Chromium: stale single-instance locks from an old pod block startup.
+CLAUDE_CONFIG_DIR="${HOME}/.config/Claude"
+rm -f "${CLAUDE_CONFIG_DIR}/SingletonLock" "${CLAUDE_CONFIG_DIR}/SingletonSocket" "${CLAUDE_CONFIG_DIR}/SingletonCookie"
+
+cd "${PERSISTENT_DIR}" || { echo "ERROR: failed to cd to ${PERSISTENT_DIR}"; exit 1; }
+echo "INFO: starting Claude Desktop on ${DISPLAY} ..."
+exec "${AGENT_SANDBOX_DIR}/bin/claude-desktop"

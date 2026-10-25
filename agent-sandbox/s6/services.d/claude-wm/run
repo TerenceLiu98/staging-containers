@@ -1,0 +1,5 @@
+#!/command/with-contenv bash
+exec 2>&1
+[ "${CLAUDE_DESKTOP:-true}" = "true" ] || exec sleep infinity
+. /etc/agent-sandbox/runtime-env
+exec /etc/agent-sandbox/start-openbox "${CLAUDE_DESKTOP_DISPLAY}"

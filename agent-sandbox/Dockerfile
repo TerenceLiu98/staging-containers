@@ -33,6 +33,9 @@ ARG ZCODE_SHA512_AMD64
 ARG ZCODE_SHA512_ARM64
 ARG AGENT_BROWSER_VERSION
 ARG AGENT_BROWSER_SHA512
+ARG CLAUDE_DESKTOP_VERSION
+ARG CLAUDE_DESKTOP_SHA256_AMD64
+ARG CLAUDE_DESKTOP_SHA256_ARM64
 
 LABEL org.opencontainers.image.version="${AGENT_SANDBOX_IMAGE_REVISION}" \
       org.opencontainers.image.description="Agent Sandbox for Kubeflow: VS Code, VNC browser, terminal and coding agents in one workspace" \
@@ -42,7 +45,8 @@ LABEL org.opencontainers.image.version="${AGENT_SANDBOX_IMAGE_REVISION}" \
       io.agent-sandbox.claude-code.version="${CLAUDE_CODE_VERSION}" \
       io.agent-sandbox.opencode.version="${AGENT_SANDBOX_OPENCODE_VERSION}" \
       io.agent-sandbox.zcode.version="${ZCODE_VERSION}" \
-      io.agent-sandbox.agent-browser.version="${AGENT_BROWSER_VERSION}"
+      io.agent-sandbox.agent-browser.version="${AGENT_BROWSER_VERSION}" \
+      io.agent-sandbox.claude-desktop.version="${CLAUDE_DESKTOP_VERSION}"
 
 USER root
 
@@ -61,12 +65,15 @@ ENV AGENT_SANDBOX_DIR=/opt/agent-sandbox \
     CLAUDE_CONFIG_DIR=/home/jovyan/.claude \
     ZCODE_DISPLAY=:2 \
     ZCODE_DESKTOP=true \
+    CLAUDE_DESKTOP_DISPLAY=:3 \
+    CLAUDE_DESKTOP=true \
     BROWSER=/opt/agent-sandbox/bin/open-url
 
 RUN export DEBIAN_FRONTEND=noninteractive \
  && apt-get -yq update \
  && apt-get -yq install --no-install-recommends \
     dbus-x11 \
+    gnome-keyring \
     fonts-dejavu-core \
     fonts-noto-cjk \
     fonts-noto-color-emoji \
@@ -223,6 +230,27 @@ RUN case "${TARGETPLATFORM}" in \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
+# Claude Desktop (Linux beta): the Claude panel renders this app on VNC display :3.
+# Sign-in lives in the keyring, hence gnome-keyring. CLAUDE_DESKTOP_ADD_REPO=false keeps
+# the package's postinst from registering the apt repo inside the image.
+RUN case "${TARGETPLATFORM}" in \
+      linux/amd64) CLAUDE_DESKTOP_ARCH="amd64"; CLAUDE_DESKTOP_SHA256="${CLAUDE_DESKTOP_SHA256_AMD64}" ;; \
+      linux/arm64) CLAUDE_DESKTOP_ARCH="arm64"; CLAUDE_DESKTOP_SHA256="${CLAUDE_DESKTOP_SHA256_ARM64}" ;; \
+      *) echo "Unsupported claude-desktop target platform: ${TARGETPLATFORM}" >&2; exit 1 ;; \
+    esac \
+ && export DEBIAN_FRONTEND=noninteractive \
+ && CLAUDE_DESKTOP_ASSET="claude-desktop_${CLAUDE_DESKTOP_VERSION}_${CLAUDE_DESKTOP_ARCH}.deb" \
+ && curl -fsSL "https://downloads.claude.ai/claude-desktop/apt/stable/pool/main/c/claude-desktop/${CLAUDE_DESKTOP_ASSET}" -o "/tmp/${CLAUDE_DESKTOP_ASSET}" \
+ && echo "${CLAUDE_DESKTOP_SHA256}  /tmp/${CLAUDE_DESKTOP_ASSET}" | sha256sum -c - \
+ && printf '%s\n' 'CLAUDE_DESKTOP_ADD_REPO="false"' > /etc/default/claude-desktop \
+ && apt-get -yq update \
+ && apt-get -yq install --no-install-recommends "/tmp/${CLAUDE_DESKTOP_ASSET}" \
+ && rm -f "/tmp/${CLAUDE_DESKTOP_ASSET}" \
+ && test -x /usr/bin/claude-desktop \
+ && test -f "/usr/share/applications/claude-desktop.desktop" \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
 # agent-browser ships native binaries in its npm tarball; no Node runtime is needed.
 RUN case "${TARGETPLATFORM}" in \
       linux/amd64) AGENT_BROWSER_ARCH="x64" ;; \
@@ -245,6 +273,7 @@ COPY --chown=${NB_USER}:${NB_GID} --chmod=755 opt/ ${AGENT_SANDBOX_DIR}/
 
 RUN ln -sf "${AGENT_SANDBOX_DIR}/bin/agent-browser" /usr/local/bin/agent-browser \
  && ln -sf "${AGENT_SANDBOX_DIR}/bin/zcode-desktop" /usr/local/bin/zcode-desktop \
+ && ln -sf "${AGENT_SANDBOX_DIR}/bin/claude-desktop" /usr/local/bin/claude-desktop \
  && ln -sf "${AGENT_SANDBOX_DIR}/bin/session" /usr/local/bin/agent-sandbox-session \
  && mv /etc/agent-sandbox/tmux.conf /etc/tmux.conf \
  && mv /etc/agent-sandbox/profile.sh /etc/profile.d/agent-sandbox.sh \
@@ -261,8 +290,9 @@ RUN ln -sf "${AGENT_SANDBOX_DIR}/bin/agent-browser" /usr/local/bin/agent-browser
       --arg opencode "${AGENT_SANDBOX_OPENCODE_VERSION}" \
       --arg zcode "${ZCODE_VERSION} (desktop), CLI $(HOME=/tmp/zcode-version-home /usr/local/bin/zcode --version | awk '{print $NF}')" \
       --arg agentBrowser "${AGENT_BROWSER_VERSION}" \
+      --arg claudeDesktop "${CLAUDE_DESKTOP_VERSION}" \
       --arg platform "${TARGETPLATFORM}" \
-      '{revision: $revision, platform: $platform, components: {"code-server": $codeServer, chromium: $chromium, playwright: $playwright, noVNC: $novnc, ttyd: $ttyd, codex: $codex, "claude-code": $claude, opencode: $opencode, zcode: $zcode, "agent-browser": $agentBrowser}}' \
+      '{revision: $revision, platform: $platform, components: {"code-server": $codeServer, chromium: $chromium, playwright: $playwright, noVNC: $novnc, ttyd: $ttyd, codex: $codex, "claude-code": $claude, opencode: $opencode, zcode: $zcode, "agent-browser": $agentBrowser, "claude-desktop": $claudeDesktop}}' \
       > "${AGENT_SANDBOX_DIR}/dashboard/status.json" \
  && rm -rf /tmp/zcode-version-home /tmp/node-compile-cache \
  && chmod 0644 "${AGENT_SANDBOX_DIR}/dashboard/status.json"

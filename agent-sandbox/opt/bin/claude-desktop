@@ -1,0 +1,15 @@
+#!/bin/bash
+# Claude Desktop launcher for the sandbox: runs it on CLAUDE_DESKTOP_DISPLAY with the
+# flags an Electron app needs in a container, and an unlocked keyring so the sign-in
+# survives restarts (the app stores it via libsecret). Also the handler for claude://
+# links: a second launch hands the URL to the running instance.
+set -euo pipefail
+
+export DISPLAY="${CLAUDE_DESKTOP_DISPLAY:-:3}"
+
+exec dbus-run-session -- bash -c '
+  # Unlock (or create) the login keyring with an empty password; libsecret writes to
+  # ~/.local/share/keyring, which is persisted by the sandbox.
+  printf "\n" | gnome-keyring-daemon --unlock --replace --components=secrets >/dev/null 2>&1 || true
+  exec /usr/bin/claude-desktop --no-sandbox --disable-gpu --disable-dev-shm-usage --password-store=basic "$@"
+' claude-desktop "$@"
