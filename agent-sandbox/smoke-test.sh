@@ -8,7 +8,7 @@
 # agent-browser, then restarts the container and checks that state persisted.
 set -euo pipefail
 
-IMAGE="${1:-terencelau/kubeflow:latest-agent-sandbox}"
+IMAGE="${1:-terencelau/agent-sandbox:latest}"
 CONTAINER_CLI="${CONTAINER_CLI:-docker}"
 NAME="${SMOKE_NAME:-agent-sandbox-smoke}"
 VOLUME="${NAME}-srv"

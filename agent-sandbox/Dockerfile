@@ -1,9 +1,11 @@
 ARG TARGETPLATFORM
-ARG REGISTRY_PREFIX
-ARG PROJECT_NAME
-ARG BASE_IMAGE_TAG
+ARG BASE_IMAGE=terencelau/kubeflow
+ARG BASE_IMAGE_TAG=kubeflow-ubuntu-24.04
 
-FROM --platform=$TARGETPLATFORM ${REGISTRY_PREFIX}/${PROJECT_NAME}:${BASE_IMAGE_TAG}
+# Standalone image; the only external dependency is the published base image
+# (Ubuntu 24.04 + s6-overlay + the jovyan/srv layout). Kubeflow-specific
+# adaptation happens in a separate image layered on top of this one.
+FROM --platform=$TARGETPLATFORM ${BASE_IMAGE}:${BASE_IMAGE_TAG}
 
 ARG TARGETPLATFORM
 ARG AGENT_SANDBOX_IMAGE_REVISION

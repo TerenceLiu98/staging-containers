@@ -35,14 +35,6 @@ CODESERVER_ARCH_OPENCODE_VERSION ?= 1.18.14
 KUBECODE_VERSION ?= 0.1.2
 KUBECODE_IMAGE_REVISION ?= 4
 KUBECODE_EDGE_IMAGE_REVISION ?= 1
-AGENT_SANDBOX_IMAGE_REVISION ?= 1
-AGENT_SANDBOX_NODE_VERSION ?= 24.22.1
-AGENT_SANDBOX_OPENCODE_VERSION ?= 1.17.20
-ZCODE_VERSION ?= 3.14.3
-AGENT_BROWSER_VERSION ?= 0.39.2
-PLAYWRIGHT_VERSION ?= 1.64.1
-NOVNC_VERSION ?= 1.7.0
-TTYD_VERSION ?= 1.7.7
 CODEX_CLI_VERSION ?= 0.144.6
 CODEX_CLI_SHA256_AMD64 ?= 6a9def51a0ad8cea6684d8eb3bf033c89f33e3bc5cfe492f1a1e0a718451a1c6
 CODEX_CLI_SHA256_ARM64 ?= 8eddae5e6c009dff9ba51ae1bfe3bdd9ff4c1ccc93a48cc6860db1cd9fdf11be
@@ -89,14 +81,13 @@ KUBECODE_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-kubeco
 KUBECODE_CUDA_PYTORCH_IMAGE_TAG := $(KUBECODE_IMAGE_TAG)-cuda-$(CUDA_VERSION)-pytorch-$(PYTORCH_VERSION)
 KUBECODE_EDGE_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-kubecode-$(KUBECODE_VERSION)-edge-r$(KUBECODE_EDGE_IMAGE_REVISION)
 KUBECODE_EDGE_CUDA_PYTORCH_IMAGE_TAG := $(KUBECODE_EDGE_IMAGE_TAG)-cuda-$(CUDA_VERSION)-pytorch-$(PYTORCH_VERSION)
-AGENT_SANDBOX_IMAGE_TAG := $(PROJECT_NAME)-$(BASE_IMAGE)-$(BASE_IMAGE_VERSION)-agent-sandbox-r$(AGENT_SANDBOX_IMAGE_REVISION)
 CODESERVER_LLM_IMAGE_TAG := $(PROJECT_NAME)-code-server-llm-cuda-$(CUDA_VERSION)-torch-$(PYTORCH_VERSION)-vllm-$(VLLM_VERSION)
 
-.PHONY: all build-base push-base build-base-tailscale push-base-tailscale build-jupyter-base push-jupyter-base build-jupyter-cuda-pytorch push-jupyter-cuda-pytorch build-code-server build-code-server-arch build-deepseek-harness build-deepseek-harness-cuda-pytorch build-opencode build-opencode-cuda-pytorch build-opencode-edge build-kubecode build-kubecode-cuda-pytorch build-kubecode-edge build-kubecode-edge-cuda-pytorch build-code-server-llm push-code-server push-code-server-arch push-deepseek-harness push-deepseek-harness-cuda-pytorch push-opencode push-opencode-cuda-pytorch push-opencode-edge push-kubecode push-kubecode-cuda-pytorch push-kubecode-edge push-kubecode-edge-cuda-pytorch push-code-server-llm build-agent-sandbox push-agent-sandbox
+.PHONY: all build-base push-base build-base-tailscale push-base-tailscale build-jupyter-base push-jupyter-base build-jupyter-cuda-pytorch push-jupyter-cuda-pytorch build-code-server build-code-server-arch build-deepseek-harness build-deepseek-harness-cuda-pytorch build-opencode build-opencode-cuda-pytorch build-opencode-edge build-kubecode build-kubecode-cuda-pytorch build-kubecode-edge build-kubecode-edge-cuda-pytorch build-code-server-llm push-code-server push-code-server-arch push-deepseek-harness push-deepseek-harness-cuda-pytorch push-opencode push-opencode-cuda-pytorch push-opencode-edge push-kubecode push-kubecode-cuda-pytorch push-kubecode-edge push-kubecode-edge-cuda-pytorch push-code-server-llm
 
 # Default target
-build-all: build-base build-base-tailscale build-jupyter-base build-jupyter-cuda-pytorch build-code-server build-code-server-arch build-deepseek-harness build-deepseek-harness-cuda-pytorch build-opencode build-opencode-cuda-pytorch build-opencode-edge build-kubecode build-kubecode-cuda-pytorch build-kubecode-edge build-kubecode-edge-cuda-pytorch build-code-server-llm build-agent-sandbox
-push-all: push-base push-base-tailscale push-jupyter-base push-jupyter-cuda-pytorch push-code-server push-code-server-arch push-deepseek-harness push-deepseek-harness-cuda-pytorch push-opencode push-opencode-cuda-pytorch push-opencode-edge push-kubecode push-kubecode-cuda-pytorch push-kubecode-edge push-kubecode-edge-cuda-pytorch push-code-server-llm push-agent-sandbox
+build-all: build-base build-base-tailscale build-jupyter-base build-jupyter-cuda-pytorch build-code-server build-code-server-arch build-deepseek-harness build-deepseek-harness-cuda-pytorch build-opencode build-opencode-cuda-pytorch build-opencode-edge build-kubecode build-kubecode-cuda-pytorch build-kubecode-edge build-kubecode-edge-cuda-pytorch build-code-server-llm
+push-all: push-base push-base-tailscale push-jupyter-base push-jupyter-cuda-pytorch push-code-server push-code-server-arch push-deepseek-harness push-deepseek-harness-cuda-pytorch push-opencode push-opencode-cuda-pytorch push-opencode-edge push-kubecode push-kubecode-cuda-pytorch push-kubecode-edge push-kubecode-edge-cuda-pytorch push-code-server-llm
 
 # Build base image
 build-base:
@@ -440,43 +431,3 @@ build-code-server-llm:
 push-code-server-llm:
 	$(CONTAINER_CLI) push $(IMAGE_NAME):$(CODESERVER_LLM_IMAGE_TAG)
 	$(CONTAINER_CLI) push $(IMAGE_NAME):code-server-llm-latest
-
-build-agent-sandbox: build-base
-	$(CONTAINER_CLI) build \
-		-f agent-sandbox/Dockerfile \
-		-t $(IMAGE_NAME):$(AGENT_SANDBOX_IMAGE_TAG) \
-		--build-arg TARGETPLATFORM=$(TARGETPLATFORM) \
-		--build-arg BASE_IMAGE_TAG=$(BASE_IMAGE_TAG) \
-		--build-arg PROJECT_NAME=$(PROJECT_NAME) \
-		--build-arg REGISTRY_PREFIX=$(REGISTRY_PREFIX) \
-		--build-arg AGENT_SANDBOX_IMAGE_REVISION=$(AGENT_SANDBOX_IMAGE_REVISION) \
-		--build-arg CODESERVER_VERSION=$(CODESERVER_VERSION) \
-		--build-arg AGENT_SANDBOX_NODE_VERSION=$(AGENT_SANDBOX_NODE_VERSION) \
-		--build-arg AGENT_SANDBOX_NODE_SHA256_AMD64=$(AGENT_SANDBOX_NODE_SHA256_AMD64) \
-		--build-arg AGENT_SANDBOX_NODE_SHA256_ARM64=$(AGENT_SANDBOX_NODE_SHA256_ARM64) \
-		--build-arg PLAYWRIGHT_VERSION=$(PLAYWRIGHT_VERSION) \
-		--build-arg NOVNC_VERSION=$(NOVNC_VERSION) \
-		--build-arg NOVNC_SHA256=$(NOVNC_SHA256) \
-		--build-arg TTYD_VERSION=$(TTYD_VERSION) \
-		--build-arg TTYD_SHA256_AMD64=$(TTYD_SHA256_AMD64) \
-		--build-arg TTYD_SHA256_ARM64=$(TTYD_SHA256_ARM64) \
-		--build-arg CODEX_CLI_VERSION=$(CODEX_CLI_VERSION) \
-		--build-arg CODEX_CLI_SHA256_AMD64=$(CODEX_CLI_SHA256_AMD64) \
-		--build-arg CODEX_CLI_SHA256_ARM64=$(CODEX_CLI_SHA256_ARM64) \
-		--build-arg CLAUDE_CODE_VERSION=$(CLAUDE_CODE_VERSION) \
-		--build-arg CLAUDE_CODE_SHA256_AMD64=$(CLAUDE_CODE_SHA256_AMD64) \
-		--build-arg CLAUDE_CODE_SHA256_ARM64=$(CLAUDE_CODE_SHA256_ARM64) \
-		--build-arg AGENT_SANDBOX_OPENCODE_VERSION=$(AGENT_SANDBOX_OPENCODE_VERSION) \
-		--build-arg AGENT_SANDBOX_OPENCODE_SHA256_AMD64=$(AGENT_SANDBOX_OPENCODE_SHA256_AMD64) \
-		--build-arg AGENT_SANDBOX_OPENCODE_SHA256_ARM64=$(AGENT_SANDBOX_OPENCODE_SHA256_ARM64) \
-		--build-arg ZCODE_VERSION=$(ZCODE_VERSION) \
-		--build-arg ZCODE_SHA512_AMD64=$(ZCODE_SHA512_AMD64) \
-		--build-arg ZCODE_SHA512_ARM64=$(ZCODE_SHA512_ARM64) \
-		--build-arg AGENT_BROWSER_VERSION=$(AGENT_BROWSER_VERSION) \
-		--build-arg AGENT_BROWSER_SHA512=$(AGENT_BROWSER_SHA512) \
-		agent-sandbox
-	$(CONTAINER_CLI) tag $(IMAGE_NAME):$(AGENT_SANDBOX_IMAGE_TAG) $(IMAGE_NAME):latest-agent-sandbox
-
-push-agent-sandbox:
-	$(CONTAINER_CLI) push $(IMAGE_NAME):$(AGENT_SANDBOX_IMAGE_TAG)
-	$(CONTAINER_CLI) push $(IMAGE_NAME):latest-agent-sandbox

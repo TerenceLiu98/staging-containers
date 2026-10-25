@@ -1,0 +1,143 @@
+name: Build Agent Sandbox
+run-name: Build agent-sandbox (${{ github.event_name == 'workflow_dispatch' && inputs.target_platform || 'push' }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      push_images:
+        description: Push images to the registry.
+        required: true
+        default: false
+        type: boolean
+      registry_prefix:
+        description: Docker image namespace, for example docker.io/terencelau or terencelau.
+        required: false
+        default: "docker.io/terencelau"
+        type: string
+      target_platform:
+        description: Docker target platform. Use a comma-separated list for multi-arch.
+        required: false
+        default: linux/amd64
+        type: string
+  push:
+    branches:
+      - master
+    paths:
+      - .github/workflows/agent-sandbox.yml
+      - agent-sandbox/**
+      - versions/agent-sandbox.env
+
+env:
+  VERSION_FILE: versions/agent-sandbox.env
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Resolve versions
+        run: |
+          set -euo pipefail
+          set -a
+          . "${VERSION_FILE}"
+          set +a
+
+          REGISTRY_PREFIX="${{ inputs.registry_prefix || 'docker.io/terencelau' }}"
+          TARGETPLATFORM="${{ inputs.target_platform || 'linux/amd64' }}"
+          PUSH_IMAGES="${{ inputs.push_images || github.event_name == 'push' }}"
+
+          if [ "${PUSH_IMAGES}" != "true" ] && [[ "${TARGETPLATFORM}" == *,* ]]; then
+            echo "Multi-platform builds require push_images=true." >&2
+            exit 1
+          fi
+
+          IMAGE_NAME="${REGISTRY_PREFIX}/agent-sandbox"
+          AGENT_SANDBOX_IMAGE_TAG="ubuntu-24.04-r${AGENT_SANDBOX_IMAGE_REVISION}"
+
+          {
+            for name in \
+              BASE_IMAGE BASE_IMAGE_TAG \
+              AGENT_SANDBOX_IMAGE_REVISION AGENT_SANDBOX_NODE_VERSION AGENT_SANDBOX_NODE_SHA256_AMD64 \
+              AGENT_SANDBOX_NODE_SHA256_ARM64 AGENT_SANDBOX_OPENCODE_VERSION AGENT_SANDBOX_OPENCODE_SHA256_AMD64 \
+              AGENT_SANDBOX_OPENCODE_SHA256_ARM64 ZCODE_VERSION ZCODE_SHA512_AMD64 ZCODE_SHA512_ARM64 \
+              AGENT_BROWSER_VERSION AGENT_BROWSER_SHA512 PLAYWRIGHT_VERSION NOVNC_VERSION NOVNC_SHA256 \
+              TTYD_VERSION TTYD_SHA256_AMD64 TTYD_SHA256_ARM64 CODESERVER_VERSION \
+              CODEX_CLI_VERSION CODEX_CLI_SHA256_AMD64 CODEX_CLI_SHA256_ARM64 \
+              CLAUDE_CODE_VERSION CLAUDE_CODE_SHA256_AMD64 CLAUDE_CODE_SHA256_ARM64; do
+              echo "${name}=${!name}"
+            done
+            echo "IMAGE_NAME=${IMAGE_NAME}"
+            echo "AGENT_SANDBOX_IMAGE_TAG=${AGENT_SANDBOX_IMAGE_TAG}"
+            echo "TARGETPLATFORM=${TARGETPLATFORM}"
+            echo "PUSH_IMAGES=${PUSH_IMAGES}"
+            echo "REGISTRY_PREFIX=${REGISTRY_PREFIX}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Login to Docker Hub
+        if: ${{ env.PUSH_IMAGES == 'true' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build image
+        run: |
+          set -euo pipefail
+          OUTPUT_ARGS=(--load)
+          if [ "${PUSH_IMAGES}" = "true" ]; then
+            OUTPUT_ARGS=(--push)
+          fi
+          # For multi-arch builds buildx injects TARGETPLATFORM per platform.
+          PLATFORM_ARGS=(--build-arg "TARGETPLATFORM=${TARGETPLATFORM}")
+          if [[ "${TARGETPLATFORM}" == *,* ]]; then
+            PLATFORM_ARGS=()
+          fi
+
+          docker buildx build \
+            --platform "${TARGETPLATFORM}" \
+            --file agent-sandbox/Dockerfile \
+            --tag "${IMAGE_NAME}:${AGENT_SANDBOX_IMAGE_TAG}" \
+            --tag "${IMAGE_NAME}:latest" \
+            --cache-from "type=gha,scope=agent-sandbox" \
+            --cache-to "type=gha,mode=max,scope=agent-sandbox" \
+            "${OUTPUT_ARGS[@]}" \
+            "${PLATFORM_ARGS[@]}" \
+            --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
+            --build-arg "BASE_IMAGE_TAG=${BASE_IMAGE_TAG}" \
+            --build-arg "AGENT_SANDBOX_IMAGE_REVISION=${AGENT_SANDBOX_IMAGE_REVISION}" \
+            --build-arg "CODESERVER_VERSION=${CODESERVER_VERSION}" \
+            --build-arg "AGENT_SANDBOX_NODE_VERSION=${AGENT_SANDBOX_NODE_VERSION}" \
+            --build-arg "AGENT_SANDBOX_NODE_SHA256_AMD64=${AGENT_SANDBOX_NODE_SHA256_AMD64}" \
+            --build-arg "AGENT_SANDBOX_NODE_SHA256_ARM64=${AGENT_SANDBOX_NODE_SHA256_ARM64}" \
+            --build-arg "PLAYWRIGHT_VERSION=${PLAYWRIGHT_VERSION}" \
+            --build-arg "NOVNC_VERSION=${NOVNC_VERSION}" \
+            --build-arg "NOVNC_SHA256=${NOVNC_SHA256}" \
+            --build-arg "TTYD_VERSION=${TTYD_VERSION}" \
+            --build-arg "TTYD_SHA256_AMD64=${TTYD_SHA256_AMD64}" \
+            --build-arg "TTYD_SHA256_ARM64=${TTYD_SHA256_ARM64}" \
+            --build-arg "CODEX_CLI_VERSION=${CODEX_CLI_VERSION}" \
+            --build-arg "CODEX_CLI_SHA256_AMD64=${CODEX_CLI_SHA256_AMD64}" \
+            --build-arg "CODEX_CLI_SHA256_ARM64=${CODEX_CLI_SHA256_ARM64}" \
+            --build-arg "CLAUDE_CODE_VERSION=${CLAUDE_CODE_VERSION}" \
+            --build-arg "CLAUDE_CODE_SHA256_AMD64=${CLAUDE_CODE_SHA256_AMD64}" \
+            --build-arg "CLAUDE_CODE_SHA256_ARM64=${CLAUDE_CODE_SHA256_ARM64}" \
+            --build-arg "AGENT_SANDBOX_OPENCODE_VERSION=${AGENT_SANDBOX_OPENCODE_VERSION}" \
+            --build-arg "AGENT_SANDBOX_OPENCODE_SHA256_AMD64=${AGENT_SANDBOX_OPENCODE_SHA256_AMD64}" \
+            --build-arg "AGENT_SANDBOX_OPENCODE_SHA256_ARM64=${AGENT_SANDBOX_OPENCODE_SHA256_ARM64}" \
+            --build-arg "ZCODE_VERSION=${ZCODE_VERSION}" \
+            --build-arg "ZCODE_SHA512_AMD64=${ZCODE_SHA512_AMD64}" \
+            --build-arg "ZCODE_SHA512_ARM64=${ZCODE_SHA512_ARM64}" \
+            --build-arg "AGENT_BROWSER_VERSION=${AGENT_BROWSER_VERSION}" \
+            --build-arg "AGENT_BROWSER_SHA512=${AGENT_BROWSER_SHA512}" \
+            agent-sandbox

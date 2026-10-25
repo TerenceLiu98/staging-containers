@@ -1,6 +1,6 @@
 # Agent Sandbox
 
-状态：已实现（2026-10-25）。linux/arm64 已在本地构建，并通过 `smoke-test.sh` 和 `ui-test.mjs` 的全部检查；linux/amd64 在 qemu 下验证了所有下载、校验和以及 Chromium 安装，运行时检查需要在真实 amd64 环境（CI）上跑（见 §9）。
+状态：已实现（2026-10-25）。这是一个**独立的** all-in-one agent 工作区镜像，不依赖 kubeflow 的构建体系；Kubeflow 特异性适配（registry 接入、集群验证）后续以薄镜像层单独做。linux/arm64 已在本地构建，并通过 `smoke-test.sh` 和 `ui-test.mjs` 的全部检查；linux/amd64 在 qemu 下验证了所有下载、校验和以及 Chromium 安装，运行时检查需要在真实 amd64 环境（CI）上跑（见 §9）。
 
 参照 [agent-infra/sandbox](https://github.com/agent-infra/sandbox)（下文简称 AIO）的使用体验，做了一个 Kubeflow Notebook 镜像。打开 Notebook 后进入一个多面板首页，VS Code、浏览器、终端和各个 coding agent 并排显示：
 
@@ -15,17 +15,18 @@
 
 所以这里只复刻 AIO 的设计，代码全部自己写，没有拷贝 AIO 镜像里的文件。实现完全按仓库约定来：
 
-- `FROM kubeflow/base`；
+- 唯一的外部依赖是已发布的基础镜像 `terencelau/kubeflow:kubeflow-ubuntu-24.04`（Ubuntu 24.04 + s6-overlay + jovyan/srv 布局），把它当普通基础镜像用；
 - 用 s6 管理进程，以 uid 1000 运行；
-- 原生支持 `NB_PREFIX` 和 `.state` 持久化；
-- 版本 pin 在 `versions/kubeflow.env`。
+- 原生支持路径前缀（`NB_PREFIX`，任何反向代理都适用，Kubeflow 只是其中一种）和 `.state` 持久化；
+- 版本 pin 在 `versions/agent-sandbox.env`，构建入口是自己的 `agent-sandbox/Makefile` 和 `.github/workflows/agent-sandbox.yml`。
 
 ## 1. 范围
 
-- **只考虑 Kubeflow**：对外只开 `8888` 端口，所有路径挂在 `${NB_PREFIX}` 下。鉴权、多租户、实例的创建和销毁都由 Kubeflow 负责。
+- **单容器、单端口**：对外只开 `8888`，所有路径挂在 `${NB_PREFIX}` 下（不设就是根路径）。鉴权、多租户、实例的创建和销毁交给部署平台（Kubeflow 或其他）。
 - **持久化**：PVC 挂在 `/home/jovyan/srv`。各工具的状态、登录态和浏览器 profile 放在 `srv/.state/`，再用 `ln -s` 链接回 `$HOME`（§6）。
 - **浏览器**：Chromium，agent 通过 CDP 和 agent-browser 操作。ego-lite 目前没有 Linux 版，等上游发布后再接入。
 - **不做**：沙箱 HTTP API、MCP hub、SDK 兼容。将来需要时，可以把 AIO 单独发布的静态二进制 `aiod` 作为一个 s6 服务加进来。
+- **不在本镜像里做的**：Kubeflow 特异性适配。后续在 kubeflow 目录里以 `FROM agent-sandbox` 的薄镜像层实现。
 
 ## 2. 架构
 
@@ -169,9 +170,11 @@ graph LR
 ## 8. 文件布局
 
 ```text
-kubeflow/agent-sandbox/
+agent-sandbox/
 ├── DESIGN.md
-├── Dockerfile
+├── Dockerfile         # FROM terencelau/kubeflow:kubeflow-ubuntu-24.04（可配 BASE_IMAGE/BASE_IMAGE_TAG）
+├── Makefile           # make build / push / smoke
+├── README.md
 ├── smoke-test.sh      # 容器级检查：路由、WebSocket、进程、CLI、agent-browser、持久化
 ├── ui-test.mjs        # 首页交互检查（用宿主机上的 headless Chrome）
 ├── opt/               # → /opt/agent-sandbox
@@ -185,9 +188,9 @@ kubeflow/agent-sandbox/
                        runtime-env,start-xvnc,start-openbox,start-websockify,wait-for-display}
 ```
 
-- 构建：`make -C kubeflow build-agent-sandbox`；CI 中是 `kubeflow-images.yml` 的 `agent-sandbox` 选项（`all` 也包含它）。
-- 镜像 tag：`kubeflow-ubuntu-24.04-agent-sandbox-r${AGENT_SANDBOX_IMAGE_REVISION}`，另有 `latest-agent-sandbox`。
-- 新增的版本 pin 都在 `versions/kubeflow.env`：
+- 构建：`make -C agent-sandbox build`；CI 是独立的 `.github/workflows/agent-sandbox.yml`（push 到 master 且 agent-sandbox 有改动时自动构建，也可手动触发、可选多架构）。
+- 镜像名：`terencelau/agent-sandbox`，tag `ubuntu-24.04-r${AGENT_SANDBOX_IMAGE_REVISION}` 和 `latest`。
+- 版本 pin 都在 `versions/agent-sandbox.env`（其中 codex / claude-code 与 `versions/kubeflow.env` 的 kubecode bundle 数值相同，目前手工同步）：
   - `AGENT_SANDBOX_*`（Node 24、OpenCode）
   - `ZCODE_*`
   - `AGENT_BROWSER_*`
@@ -200,10 +203,10 @@ kubeflow/agent-sandbox/
 ## 9. 测试
 
 ```bash
-make -C kubeflow build-agent-sandbox CONTAINER_CLI=docker TARGETPLATFORM=linux/arm64
-kubeflow/agent-sandbox/smoke-test.sh terencelau/kubeflow:latest-agent-sandbox
-docker run -d --name sbx -p 127.0.0.1:18889:8888 -e NB_PREFIX=/notebook/a/b terencelau/kubeflow:latest-agent-sandbox
-node kubeflow/agent-sandbox/ui-test.mjs http://127.0.0.1:18889/notebook/a/b/
+make -C agent-sandbox build TARGETPLATFORM=linux/arm64
+make -C agent-sandbox smoke
+docker run -d --name sbx -p 127.0.0.1:18889:8888 -e NB_PREFIX=/notebook/a/b terencelau/agent-sandbox:latest
+node agent-sandbox/ui-test.mjs http://127.0.0.1:18889/notebook/a/b/
 ```
 
 本地已验证：
